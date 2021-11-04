@@ -1,6 +1,6 @@
 {
   "name": "hoppscotch-app",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Open source API development ecosystem",
   "author": "Hoppscotch (support@hoppscotch.io)",
   "private": true,
@@ -10,19 +10,20 @@
     "dev": "pnpm -r do-dev",
     "generate": "pnpm -r do-build-prod",
     "start": "pnpm -r do-prod-start",
+    "lint": "pnpm -r do-lint",
     "lintfix": "pnpm -r do-lintfix",
-    "pre-commit": "pnpm -r do-lintfix",
+    "pre-commit": "pnpm -r do-lint",
     "test": "pnpm -r do-test"
   },
   "workspaces": [
     "./packages/*"
   ],
   "dependencies": {
-    "husky": "^7.0.2",
-    "lint-staged": "^11.2.2"
+    "husky": "^7.0.4",
+    "lint-staged": "^11.2.6"
   },
   "devDependencies": {
-    "@commitlint/cli": "^13.2.1",
-    "@commitlint/config-conventional": "^13.2.0"
+    "@commitlint/cli": "^14.1.0",
+    "@commitlint/config-conventional": "^14.1.0"
   }
 }

@@ -129,8 +129,7 @@
                 v-tippy="{ theme: 'tooltip' }"
                 :title="$t('action.clear_all')"
                 svg="trash-2"
-                :disabled="Boolean(bulkMode)"
-                @click.native="headers = []"
+                @click.native="bulkMode ? clearBulkEditor() : clearContent()"
               />
               <ButtonSecondary
                 v-tippy="{ theme: 'tooltip' }"
@@ -143,7 +142,7 @@
                 v-tippy="{ theme: 'tooltip' }"
                 :title="$t('add.new')"
                 svg="plus"
-                :disabled="Boolean(bulkMode)"
+                :disabled="bulkMode"
                 @click.native="addRequestHeader"
               />
             </div>
@@ -172,10 +171,10 @@
                   py-1
                   px-4
                   truncate
-                  focus:outline-none
                 "
+                class="!flex flex-1"
                 @input="
-                  updateGQLHeader(index, {
+                  updateRequestHeader(index, {
                     key: $event,
                     value: header.value,
                     active: header.active,
@@ -189,7 +188,7 @@
                 :value="header.value"
                 autofocus
                 @change="
-                  updateGQLHeader(index, {
+                  updateRequestHeader(index, {
                     key: header.key,
                     value: $event.target.value,
                     active: header.active,
@@ -215,7 +214,7 @@
                   "
                   color="green"
                   @click.native="
-                    updateGQLHeader(index, {
+                    updateRequestHeader(index, {
                       key: header.key,
                       value: header.value,
                       active: !header.active,
@@ -243,6 +242,18 @@
                 justify-center
               "
             >
+              <img
+                :src="`/images/states/${$colorMode.value}/add_category.svg`"
+                loading="lazy"
+                class="
+                  flex-col
+                  my-4
+                  object-contain object-center
+                  h-16
+                  w-16
+                  inline-flex
+                "
+              />
               <span class="text-center pb-4">
                 {{ $t("empty.headers") }}
               </span>
@@ -260,7 +271,7 @@
 
     <CollectionsSaveRequest
       mode="graphql"
-      :show="Boolean(showSaveRequestModal)"
+      :show="showSaveRequestModal"
       @hide-modal="hideRequestModal"
     />
   </div>
@@ -378,18 +389,28 @@ const copyVariablesIcon = ref("copy")
 
 const showSaveRequestModal = ref(false)
 
-watch(
-  headers,
-  () => {
-    if (
-      (headers.value[headers.value.length - 1]?.key !== "" ||
-        headers.value[headers.value.length - 1]?.value !== "") &&
-      headers.value.length
-    )
-      addRequestHeader()
-  },
-  { deep: true }
-)
+const editBulkHeadersLine = (
+  index: number,
+  item?: {
+    key: string
+    value: string
+    active: boolean
+  }
+) => {
+  bulkHeaders.value = headers.value
+    .reduce((all, header, pIndex) => {
+      const current =
+        index === pIndex && item !== null
+          ? `${item.active ? "" : "//"}${item.key}: ${item.value}`
+          : `${header.active ? "" : "//"}${header.key}: ${header.value}`
+      return [...all, current]
+    }, [])
+    .join("\n")
+}
+
+const clearBulkEditor = () => {
+  bulkHeaders.value = ""
+}
 
 onMounted(() => {
   if (!headers.value?.length) {
@@ -492,14 +513,28 @@ const copyVariables = () => {
 }
 
 const addRequestHeader = () => {
-  addGQLHeader({
-    key: "",
-    value: "",
-    active: true,
-  })
+  const empty = { key: "", value: "", active: true }
+  const index = headers.value.length
+
+  addGQLHeader(empty)
+  editBulkHeadersLine(index, empty)
+}
+
+const updateRequestHeader = (
+  index: number,
+  item: { key: string; value: string; active: boolean }
+) => {
+  updateGQLHeader(index, item)
+  editBulkHeadersLine(index, item)
 }
 
 const removeRequestHeader = (index: number) => {
   removeGQLHeader(index)
+  editBulkHeadersLine(index, null)
+}
+
+const clearContent = () => {
+  headers.value = []
+  clearBulkEditor()
 }
 </script>

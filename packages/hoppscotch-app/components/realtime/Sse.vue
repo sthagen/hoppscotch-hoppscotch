@@ -1,9 +1,5 @@
 <template>
-  <Splitpanes
-    class="smart-splitter"
-    :dbl-click-splitter="false"
-    :horizontal="COLUMN_LAYOUT"
-  >
+  <Splitpanes class="smart-splitter" :horizontal="COLUMN_LAYOUT">
     <Pane class="hide-scrollbar !overflow-auto">
       <div class="bg-primary flex p-4 top-0 z-10 sticky">
         <div class="space-x-2 flex-1 inline-flex">
@@ -130,7 +126,7 @@ export default defineComponent({
       this.debouncer()
     },
   },
-  mounted() {
+  created() {
     if (process.browser) {
       this.worker = this.$worker.createRejexWorker()
       this.worker.addEventListener("message", this.workerResponseHandler)

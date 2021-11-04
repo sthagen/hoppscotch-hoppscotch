@@ -1,15 +1,14 @@
 <template>
   <Splitpanes
     class="smart-splitter"
-    :dbl-click-splitter="false"
+    :rtl="SIDEBAR_ON_LEFT && windowInnerWidth.x.value >= 768"
+    :class="{
+      '!flex-row-reverse': SIDEBAR_ON_LEFT && windowInnerWidth.x.value >= 768,
+    }"
     :horizontal="!(windowInnerWidth.x.value >= 768)"
   >
-    <Pane class="hide-scrollbar !overflow-auto">
-      <Splitpanes
-        class="smart-splitter"
-        :dbl-click-splitter="false"
-        :horizontal="COLUMN_LAYOUT"
-      >
+    <Pane size="75" min-size="65" class="hide-scrollbar !overflow-auto">
+      <Splitpanes class="smart-splitter" :horizontal="COLUMN_LAYOUT">
         <Pane class="hide-scrollbar !overflow-auto">
           <AppSection label="request">
             <div class="bg-primary flex p-4 top-0 z-10 sticky">
@@ -146,7 +145,18 @@
                 justify-center
               "
             >
-              <i class="opacity-75 pb-2 material-icons">topic</i>
+              <img
+                :src="`/images/states/${$colorMode.value}/add_category.svg`"
+                loading="lazy"
+                class="
+                  flex-col
+                  my-4
+                  object-contain object-center
+                  h-16
+                  w-16
+                  inline-flex
+                "
+              />
               <span class="text-center">
                 {{ $t("empty.protocols") }}
               </span>
@@ -164,8 +174,7 @@
       </Splitpanes>
     </Pane>
     <Pane
-      v-if="RIGHT_SIDEBAR"
-      max-size="35"
+      v-if="SIDEBAR"
       size="25"
       min-size="20"
       class="hide-scrollbar !overflow-auto"
@@ -220,15 +229,16 @@ export default defineComponent({
   setup() {
     return {
       windowInnerWidth: useWindowSize(),
-      RIGHT_SIDEBAR: useSetting("RIGHT_SIDEBAR"),
+      SIDEBAR: useSetting("SIDEBAR"),
       COLUMN_LAYOUT: useSetting("COLUMN_LAYOUT"),
+      SIDEBAR_ON_LEFT: useSetting("SIDEBAR_ON_LEFT"),
     }
   },
   data() {
     return {
       connectionState: false,
       connectingState: false,
-      url: "wss://echo.websocket.org",
+      url: "wss://hoppscotch-websocket.herokuapp.com",
       isUrlValid: true,
       socket: null,
       communication: {
@@ -262,7 +272,7 @@ export default defineComponent({
       deep: true,
     },
   },
-  mounted() {
+  created() {
     if (process.browser) {
       this.worker = this.$worker.createRejexWorker()
       this.worker.addEventListener("message", this.workerResponseHandler)

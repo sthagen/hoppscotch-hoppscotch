@@ -63,7 +63,7 @@
             </span>
             <span class="text-secondaryLight">
               {{
-                ` \xA0 — \xA0test ${
+                ` \xA0 — \xA0 ${
                   result.status === "pass"
                     ? $t("test.passed")
                     : $t("test.failed")
@@ -78,6 +78,11 @@
       v-else
       class="flex flex-col text-secondaryLight p-4 items-center justify-center"
     >
+      <img
+        :src="`/images/states/${$colorMode.value}/validation.svg`"
+        loading="lazy"
+        class="flex-col my-4 object-contain object-center h-16 w-16 inline-flex"
+      />
       <span class="text-center pb-2">
         {{ $t("empty.tests") }}
       </span>

@@ -69,10 +69,11 @@ body {
 
 @keyframes fade {
   0% {
-    opacity: 0;
+    @apply opacity-0;
   }
+
   100% {
-    opacity: 1;
+    @apply opacity-100;
   }
 }
 
@@ -95,12 +96,15 @@ body {
 }
 
 .material-icons {
+  @apply flex-shrink-0;
+
   font-size: var(--body-line-height) !important;
   width: var(--body-line-height);
-  overflow: hidden;
 }
 
 .svg-icons {
+  @apply flex-shrink-0;
+
   height: var(--body-line-height);
   width: var(--body-line-height);
 }
@@ -178,10 +182,6 @@ a {
   @apply max-h-46;
   @apply items-stretch;
   @apply overflow-y-auto;
-
-  // &::-webkit-scrollbar {
-  //   @apply hidden;
-  // }
 }
 
 hr {
