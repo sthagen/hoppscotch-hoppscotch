@@ -9,52 +9,61 @@
   >
     <Pane size="75" min-size="65" class="hide-scrollbar !overflow-auto">
       <Splitpanes class="smart-splitter" :horizontal="COLUMN_LAYOUT">
-        <Pane class="hide-scrollbar !overflow-auto">
-          <AppSection label="request">
-            <div class="bg-primary flex p-4 top-0 z-10 sticky">
-              <div class="space-x-2 flex-1 inline-flex">
-                <input
-                  id="mqtt-url"
-                  v-model="url"
-                  v-focus
-                  type="url"
-                  autocomplete="off"
-                  spellcheck="false"
-                  class="
-                    bg-primaryLight
-                    border border-divider
-                    rounded
-                    text-secondaryDark
-                    w-full
-                    py-2
-                    px-4
-                    hover:border-dividerDark
-                    focus-visible:bg-transparent
-                    focus-visible:border-dividerDark
-                  "
-                  :placeholder="$t('mqtt.url')"
-                  :disabled="connectionState"
-                />
-                <ButtonPrimary
-                  id="connect"
-                  :disabled="!validUrl"
-                  class="w-32"
-                  :label="
-                    connectionState
-                      ? $t('action.disconnect')
-                      : $t('action.connect')
-                  "
-                  :loading="connectingState"
-                  @click.native="toggleConnection"
-                />
-              </div>
+        <Pane
+          :size="COLUMN_LAYOUT ? 45 : 50"
+          class="hide-scrollbar !overflow-auto"
+        >
+          <div class="sticky top-0 z-10 flex flex-col p-4 space-y-4 bg-primary">
+            <div class="inline-flex flex-1 space-x-2">
+              <input
+                id="mqtt-url"
+                v-model="url"
+                type="url"
+                autocomplete="off"
+                spellcheck="false"
+                class="w-full px-4 py-2 border rounded bg-primaryLight border-divider text-secondaryDark hover:border-dividerDark focus-visible:bg-transparent focus-visible:border-dividerDark"
+                :placeholder="$t('mqtt.url')"
+                :disabled="connectionState"
+                @keyup.enter="validUrl ? toggleConnection() : null"
+              />
+              <ButtonPrimary
+                id="connect"
+                :disabled="!validUrl"
+                class="w-32"
+                :label="
+                  connectionState
+                    ? $t('action.disconnect')
+                    : $t('action.connect')
+                "
+                :loading="connectingState"
+                @click.native="toggleConnection"
+              />
             </div>
-          </AppSection>
+            <div class="flex space-x-4">
+              <input
+                id="mqtt-username"
+                v-model="username"
+                type="text"
+                spellcheck="false"
+                class="input"
+                :placeholder="$t('authorization.username')"
+              />
+              <input
+                id="mqtt-password"
+                v-model="password"
+                type="password"
+                spellcheck="false"
+                class="input"
+                :placeholder="$t('authorization.password')"
+              />
+            </div>
+          </div>
         </Pane>
-        <Pane class="hide-scrollbar !overflow-auto">
-          <AppSection label="response">
-            <RealtimeLog :title="$t('mqtt.log')" :log="log" />
-          </AppSection>
+        <Pane
+          :size="COLUMN_LAYOUT ? 65 : 50"
+          class="hide-scrollbar !overflow-auto"
+        >
+          <RealtimeLog :title="$t('mqtt.log')" :log="log" />
         </Pane>
       </Splitpanes>
     </Pane>
@@ -64,81 +73,71 @@
       min-size="20"
       class="hide-scrollbar !overflow-auto"
     >
-      <AppSection label="messages">
-        <div class="flex flex-col flex-1 p-4 inline-flex">
-          <label for="pub_topic" class="font-semibold text-secondaryLight">
-            {{ $t("mqtt.topic") }}
-          </label>
-        </div>
-        <div class="flex px-4">
-          <input
-            id="pub_topic"
-            v-model="pub_topic"
-            class="input"
-            :placeholder="$t('mqtt.topic_name')"
-            type="text"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-        <div class="flex flex-1 p-4 items-center justify-between">
-          <label for="mqtt-message" class="font-semibold text-secondaryLight">
-            {{ $t("mqtt.communication") }}
-          </label>
-        </div>
-        <div class="flex space-x-2 px-4">
-          <input
-            id="mqtt-message"
-            v-model="msg"
-            class="input"
-            type="text"
-            autocomplete="off"
-            :placeholder="$t('mqtt.message')"
-            spellcheck="false"
-          />
-          <ButtonPrimary
-            id="publish"
-            name="get"
-            :disabled="!canpublish"
-            :label="$t('mqtt.publish')"
-            @click.native="publish"
-          />
-        </div>
-        <div
-          class="
-            border-t border-dividerLight
-            flex flex-col flex-1
-            mt-4
-            p-4
-            inline-flex
+      <div class="flex flex-col flex-1 p-4">
+        <label for="pub_topic" class="font-semibold text-secondaryLight">
+          {{ $t("mqtt.topic") }}
+        </label>
+      </div>
+      <div class="flex px-4">
+        <input
+          id="pub_topic"
+          v-model="pub_topic"
+          class="input"
+          :placeholder="$t('mqtt.topic_name')"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div class="flex items-center justify-between flex-1 p-4">
+        <label for="mqtt-message" class="font-semibold text-secondaryLight">
+          {{ $t("mqtt.communication") }}
+        </label>
+      </div>
+      <div class="flex px-4 space-x-2">
+        <input
+          id="mqtt-message"
+          v-model="msg"
+          class="input"
+          type="text"
+          autocomplete="off"
+          :placeholder="$t('mqtt.message')"
+          spellcheck="false"
+        />
+        <ButtonPrimary
+          id="publish"
+          name="get"
+          :disabled="!canpublish"
+          :label="$t('mqtt.publish')"
+          @click.native="publish"
+        />
+      </div>
+      <div class="flex flex-col flex-1 p-4 mt-4 border-t border-dividerLight">
+        <label for="sub_topic" class="font-semibold text-secondaryLight">
+          {{ $t("mqtt.topic") }}
+        </label>
+      </div>
+      <div class="flex px-4 space-x-2">
+        <input
+          id="sub_topic"
+          v-model="sub_topic"
+          type="text"
+          autocomplete="off"
+          :placeholder="$t('mqtt.topic_name')"
+          spellcheck="false"
+          class="input"
+        />
+        <ButtonPrimary
+          id="subscribe"
+          name="get"
+          :disabled="!cansubscribe"
+          :label="
+            subscriptionState ? $t('mqtt.unsubscribe') : $t('mqtt.subscribe')
           "
-        >
-          <label for="sub_topic" class="font-semibold text-secondaryLight">
-            {{ $t("mqtt.topic") }}
-          </label>
-        </div>
-        <div class="flex space-x-2 px-4">
-          <input
-            id="sub_topic"
-            v-model="sub_topic"
-            type="text"
-            autocomplete="off"
-            :placeholder="$t('mqtt.topic_name')"
-            spellcheck="false"
-            class="input"
-          />
-          <ButtonPrimary
-            id="subscribe"
-            name="get"
-            :disabled="!cansubscribe"
-            :label="
-              subscriptionState ? $t('mqtt.unsubscribe') : $t('mqtt.subscribe')
-            "
-            reverse
-            @click.native="toggleSubscription"
-          />
-        </div>
-      </AppSection>
+          reverse
+          @click.native="toggleSubscription"
+        />
+      </div>
     </Pane>
   </Splitpanes>
 </template>
@@ -152,6 +151,22 @@ import debounce from "lodash/debounce"
 import { logHoppRequestRunToAnalytics } from "~/helpers/fb/analytics"
 import { useSetting } from "~/newstore/settings"
 import useWindowSize from "~/helpers/utils/useWindowSize"
+import {
+  MQTTEndpoint$,
+  setMQTTEndpoint,
+  MQTTConnectingState$,
+  MQTTConnectionState$,
+  setMQTTConnectingState,
+  setMQTTConnectionState,
+  MQTTSubscriptionState$,
+  setMQTTSubscriptionState,
+  MQTTSocket$,
+  setMQTTSocket,
+  MQTTLog$,
+  setMQTTLog,
+  addMQTTLogLine,
+} from "~/newstore/MQTTSession"
+import { useStream } from "~/helpers/utils/composables"
 
 export default defineComponent({
   components: { Splitpanes, Pane },
@@ -161,21 +176,35 @@ export default defineComponent({
       SIDEBAR: useSetting("SIDEBAR"),
       COLUMN_LAYOUT: useSetting("COLUMN_LAYOUT"),
       SIDEBAR_ON_LEFT: useSetting("SIDEBAR_ON_LEFT"),
+      url: useStream(MQTTEndpoint$, "", setMQTTEndpoint),
+      connectionState: useStream(
+        MQTTConnectionState$,
+        false,
+        setMQTTConnectionState
+      ),
+      connectingState: useStream(
+        MQTTConnectingState$,
+        false,
+        setMQTTConnectingState
+      ),
+      subscriptionState: useStream(
+        MQTTSubscriptionState$,
+        false,
+        setMQTTSubscriptionState
+      ),
+      log: useStream(MQTTLog$, null, setMQTTLog),
+      client: useStream(MQTTSocket$, null, setMQTTSocket),
     }
   },
   data() {
     return {
-      url: "wss://test.mosquitto.org:8081",
       isUrlValid: true,
-      client: null,
       pub_topic: "",
       sub_topic: "",
       msg: "",
-      connectionState: false,
-      connectingState: false,
-      log: null,
       manualDisconnect: false,
-      subscriptionState: false,
+      username: "",
+      password: "",
     }
   },
   computed: {
@@ -222,15 +251,24 @@ export default defineComponent({
       ]
       const parseUrl = new URL(this.url)
       this.client = new Paho.Client(
-        parseUrl.hostname,
+        `${parseUrl.hostname}${
+          parseUrl.pathname !== "/" ? parseUrl.pathname : ""
+        }`,
         parseUrl.port !== "" ? Number(parseUrl.port) : 8081,
         "hoppscotch"
       )
-      this.client.connect({
+      const connectOptions = {
         onSuccess: this.onConnectionSuccess,
         onFailure: this.onConnectionFailure,
-        useSSL: true,
-      })
+        useSSL: parseUrl.protocol !== "ws:",
+      }
+      if (this.username !== "") {
+        connectOptions.userName = this.username
+      }
+      if (this.password !== "") {
+        connectOptions.password = this.password
+      }
+      this.client.connect(connectOptions)
       this.client.onConnectionLost = this.onConnectionLost
       this.client.onMessageArrived = this.onMessageArrived
 
@@ -241,7 +279,7 @@ export default defineComponent({
     onConnectionFailure() {
       this.connectingState = false
       this.connectionState = false
-      this.log.push({
+      addMQTTLogLine({
         payload: this.$t("error.something_went_wrong"),
         source: "info",
         color: "#ff5555",
@@ -251,18 +289,16 @@ export default defineComponent({
     onConnectionSuccess() {
       this.connectingState = false
       this.connectionState = true
-      this.log.push({
+      addMQTTLogLine({
         payload: this.$t("state.connected_to", { name: this.url }),
         source: "info",
         color: "var(--accent-color)",
         ts: new Date().toLocaleTimeString(),
       })
-      this.$toast.success(this.$t("state.connected"), {
-        icon: "sync",
-      })
+      this.$toast.success(this.$t("state.connected"))
     },
     onMessageArrived({ payloadString, destinationName }) {
-      this.log.push({
+      addMQTTLogLine({
         payload: `Message: ${payloadString} arrived on topic: ${destinationName}`,
         source: "info",
         color: "var(--accent-color)",
@@ -279,7 +315,7 @@ export default defineComponent({
     disconnect() {
       this.manualDisconnect = true
       this.client.disconnect()
-      this.log.push({
+      addMQTTLogLine({
         payload: this.$t("state.disconnected_from", { name: this.url }),
         source: "info",
         color: "#ff5555",
@@ -290,13 +326,9 @@ export default defineComponent({
       this.connectingState = false
       this.connectionState = false
       if (this.manualDisconnect) {
-        this.$toast.error(this.$t("state.disconnected"), {
-          icon: "sync_disabled",
-        })
+        this.$toast.error(this.$t("state.disconnected"))
       } else {
-        this.$toast.error(this.$t("error.something_went_wrong"), {
-          icon: "error_outline",
-        })
+        this.$toast.error(this.$t("error.something_went_wrong"))
       }
       this.manualDisconnect = false
       this.subscriptionState = false
@@ -304,14 +336,14 @@ export default defineComponent({
     publish() {
       try {
         this.client.publish(this.pub_topic, this.msg, 0, false)
-        this.log.push({
+        addMQTTLogLine({
           payload: `Published message: ${this.msg} to topic: ${this.pub_topic}`,
           ts: new Date().toLocaleTimeString(),
           source: "info",
           color: "var(--accent-color)",
         })
       } catch (e) {
-        this.log.push({
+        addMQTTLogLine({
           payload:
             this.$t("error.something_went_wrong") +
             `while publishing msg: ${this.msg} to topic:  ${this.pub_topic}`,
@@ -335,7 +367,7 @@ export default defineComponent({
           onFailure: this.usubFailure,
         })
       } catch (e) {
-        this.log.push({
+        addMQTTLogLine({
           payload:
             this.$t("error.something_went_wrong") +
             `while subscribing to topic:  ${this.sub_topic}`,
@@ -347,7 +379,7 @@ export default defineComponent({
     },
     usubSuccess() {
       this.subscriptionState = !this.subscriptionState
-      this.log.push({
+      addMQTTLogLine({
         payload:
           `Successfully ` +
           (this.subscriptionState ? "subscribed" : "unsubscribed") +
@@ -358,7 +390,7 @@ export default defineComponent({
       })
     },
     usubFailure() {
-      this.log.push({
+      addMQTTLogLine({
         payload:
           `Failed to ` +
           (this.subscriptionState ? "unsubscribe" : "subscribe") +

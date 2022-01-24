@@ -1,18 +1,22 @@
 <template>
-  <SmartModal v-if="show" :title="`${$t('import.curl')}`" @close="hideModal">
+  <SmartModal v-if="show" :title="`${t('import.curl')}`" @close="hideModal">
     <template #body>
-      <div class="flex flex-col px-2">
-        <div ref="curlEditor" class="border border-dividerLight rounded"></div>
+      <div class="px-2 h-46">
+        <div
+          ref="curlEditor"
+          class="h-full border rounded border-dividerLight"
+        ></div>
       </div>
     </template>
     <template #footer>
       <span class="flex">
         <ButtonPrimary
-          :label="`${$t('import.title')}`"
+          ref="importButton"
+          :label="`${t('import.title')}`"
           @click.native="handleImport"
         />
         <ButtonSecondary
-          :label="`${$t('action.cancel')}`"
+          :label="`${t('action.cancel')}`"
           @click.native="hideModal"
         />
       </span>
@@ -21,26 +25,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, useContext } from "@nuxtjs/composition-api"
-import parseCurlCommand from "~/helpers/curlparser"
-import { useCodemirror } from "~/helpers/editor/codemirror"
+import { ref, watch } from "@nuxtjs/composition-api"
 import {
   HoppRESTHeader,
   HoppRESTParam,
   makeRESTRequest,
-} from "~/helpers/types/HoppRESTRequest"
+} from "@hoppscotch/data"
+import parseCurlCommand from "~/helpers/curlparser"
+import { useCodemirror } from "~/helpers/editor/codemirror"
 import { setRESTRequest } from "~/newstore/RESTSession"
-import "codemirror/mode/shell/shell"
+import { useI18n, useToast } from "~/helpers/utils/composables"
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
+
+const toast = useToast()
 
 const curl = ref("")
 
 const curlEditor = ref<any | null>(null)
+
+const props = defineProps<{ show: boolean; text: string }>()
 
 useCodemirror(curlEditor, curl, {
   extendedEditorConfig: {
@@ -49,9 +53,18 @@ useCodemirror(curlEditor, curl, {
   },
   linter: null,
   completer: null,
+  environmentHighlights: false,
 })
 
-defineProps<{ show: boolean }>()
+watch(
+  () => props.show,
+  () => {
+    if (props.show) {
+      curl.value = props.text.toString()
+    }
+  },
+  { immediate: false }
+)
 
 const emit = defineEmits<{
   (e: "hide-modal"): void
@@ -71,6 +84,7 @@ const handleImport = () => {
     const endpoint = origin + pathname
     const headers: HoppRESTHeader[] = []
     const params: HoppRESTParam[] = []
+    const body = parsedCurl.body
     if (parsedCurl.query) {
       for (const key of Object.keys(parsedCurl.query)) {
         const val = parsedCurl.query[key]!
@@ -101,6 +115,7 @@ const handleImport = () => {
         })
       }
     }
+
     const method = parsedCurl.method.toUpperCase()
 
     setRESTRequest(
@@ -118,15 +133,13 @@ const handleImport = () => {
         },
         body: {
           contentType: "application/json",
-          body: "",
+          body,
         },
       })
     )
   } catch (e) {
     console.error(e)
-    $toast.error(`${t("error.curl_invalid_format")}`, {
-      icon: "error_outline",
-    })
+    toast.error(`${t("error.curl_invalid_format")}`)
   }
   hideModal()
 }

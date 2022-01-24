@@ -1,71 +1,51 @@
 <template>
-  <AppSection id="script" :label="`${$t('test.script')}`">
+  <div>
     <div
-      class="
-        bg-primary
-        border-b border-dividerLight
-        flex flex-1
-        top-upperSecondaryStickyFold
-        pl-4
-        z-10
-        sticky
-        items-center
-        justify-between
-      "
+      class="sticky z-10 flex items-center justify-between flex-1 pl-4 border-b bg-primary border-dividerLight top-upperSecondaryStickyFold"
     >
       <label class="font-semibold text-secondaryLight">
-        {{ $t("test.javascript_code") }}
+        {{ t("test.javascript_code") }}
       </label>
       <div class="flex">
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
           to="https://docs.hoppscotch.io/features/tests"
           blank
-          :title="$t('app.wiki')"
+          :title="t('app.wiki')"
           svg="help-circle"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('state.linewrap')"
+          :title="t('state.linewrap')"
           :class="{ '!text-accent': linewrapEnabled }"
-          svg="corner-down-left"
+          svg="wrap-text"
           @click.native.prevent="linewrapEnabled = !linewrapEnabled"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('action.clear')"
+          :title="t('action.clear')"
           svg="trash-2"
           @click.native="clearContent"
         />
       </div>
     </div>
-    <div class="border-b border-dividerLight flex">
-      <div class="border-r border-dividerLight w-2/3">
-        <div ref="testScriptEditor"></div>
+    <div class="flex border-b border-dividerLight">
+      <div class="w-2/3 border-r border-dividerLight">
+        <div ref="testScriptEditor" class="h-full"></div>
       </div>
       <div
-        class="
-          bg-primary
-          h-full
-          top-upperTertiaryStickyFold
-          min-w-46
-          max-w-1/3
-          p-4
-          z-9
-          sticky
-          overflow-auto
-        "
+        class="sticky h-full p-4 overflow-auto bg-primary top-upperTertiaryStickyFold min-w-46 max-w-1/3 z-9"
       >
-        <div class="text-secondaryLight pb-2">
-          {{ $t("helpers.post_request_tests") }}
+        <div class="pb-2 text-secondaryLight">
+          {{ t("helpers.post_request_tests") }}
         </div>
         <SmartAnchor
-          :label="`${$t('test.learn')}`"
+          :label="`${t('test.learn')}`"
           to="https://docs.hoppscotch.io/features/tests"
           blank
         />
-        <h4 class="font-bold text-secondaryLight pt-6">
-          {{ $t("test.snippets") }}
+        <h4 class="pt-6 font-bold text-secondaryLight">
+          {{ t("test.snippets") }}
         </h4>
         <div class="flex flex-col pt-4">
           <TabSecondary
@@ -78,22 +58,19 @@
         </div>
       </div>
     </div>
-  </AppSection>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, useContext } from "@nuxtjs/composition-api"
+import { reactive, ref } from "@nuxtjs/composition-api"
 import { useTestScript } from "~/newstore/RESTSession"
 import testSnippets from "~/helpers/testSnippets"
-import "codemirror/mode/javascript/javascript"
 import { useCodemirror } from "~/helpers/editor/codemirror"
 import linter from "~/helpers/editor/linting/testScript"
 import completer from "~/helpers/editor/completion/testScript"
+import { useI18n } from "~/helpers/utils/composables"
 
-const {
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
 
 const testScript = useTestScript()
 
@@ -111,6 +88,7 @@ useCodemirror(
     },
     linter,
     completer,
+    environmentHighlights: false,
   })
 )
 

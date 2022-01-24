@@ -39,18 +39,22 @@ import { defineComponent } from "@nuxtjs/composition-api"
 export default defineComponent({
   props: {
     show: Boolean,
+    editingFolderName: { type: String, default: null },
   },
   data() {
     return {
       name: null,
     }
   },
+  watch: {
+    editingFolderName(val) {
+      this.name = val
+    },
+  },
   methods: {
     editFolder() {
       if (!this.name) {
-        this.$toast.error(this.$t("folder.invalid_name"), {
-          icon: "error_outline",
-        })
+        this.$toast.error(this.$t("folder.invalid_name"))
         return
       }
       this.$emit("submit", this.name)

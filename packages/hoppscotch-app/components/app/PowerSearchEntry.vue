@@ -1,24 +1,13 @@
 <template>
-  <div
-    class="
-      cursor-pointer
-      flex
-      py-2
-      px-6
-      transition
-      items-center
-      group
-      focus:outline-none
-      focus-visible:bg-primaryLight
-      search-entry
-    "
-    :class="{ active, 'focus-visible': active }"
+  <button
+    class="flex items-center flex-1 px-6 py-3 font-medium transition cursor-pointer search-entry focus:outline-none"
+    :class="{ active: active }"
     tabindex="-1"
     @click="$emit('action', shortcut.action)"
     @keydown.enter="$emit('action', shortcut.action)"
   >
     <SmartIcon
-      class="mr-4 opacity-50 transition svg-icons group-focus:opacity-100"
+      class="mr-4 transition opacity-50 svg-icons"
       :class="{ 'opacity-100 text-secondaryDark': active }"
       :name="shortcut.icon"
     />
@@ -26,7 +15,7 @@
       class="flex flex-1 mr-4 transition"
       :class="{ 'text-secondaryDark': active }"
     >
-      {{ $t(shortcut.label) }}
+      {{ t(shortcut.label) }}
     </span>
     <span
       v-for="(key, keyIndex) in shortcut.keys"
@@ -35,12 +24,21 @@
     >
       {{ key }}
     </span>
-  </div>
+  </button>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from "~/helpers/utils/composables"
+
+const t = useI18n()
+
 defineProps<{
-  shortcut: Object
+  shortcut: {
+    label: string
+    keys: string[]
+    action: string
+    icon: string
+  }
   active: Boolean
 }>()
 </script>
@@ -62,17 +60,13 @@ defineProps<{
     content: "";
   }
 
-  &.active::after {
-    @apply bg-accentLight;
-  }
-}
+  &.active {
+    @apply outline-none;
+    @apply bg-primaryLight;
 
-.shortcut-key {
-  @apply bg-dividerLight;
-  @apply rounded;
-  @apply ml-2;
-  @apply py-1;
-  @apply px-2;
-  @apply inline-flex;
+    &::after {
+      @apply bg-accentLight;
+    }
+  }
 }
 </style>

@@ -1,6 +1,5 @@
 import { pluck, distinctUntilChanged, map, filter } from "rxjs/operators"
 import { Ref } from "@nuxtjs/composition-api"
-import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
 import {
   FormDataKeyValue,
   HoppRESTHeader,
@@ -8,13 +7,15 @@ import {
   HoppRESTReqBody,
   HoppRESTRequest,
   RESTReqSchemaVersion,
-} from "~/helpers/types/HoppRESTRequest"
+  HoppRESTAuth,
+  ValidContentTypes,
+} from "@hoppscotch/data"
+import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
 import { HoppRESTResponse } from "~/helpers/types/HoppRESTResponse"
 import { useStream } from "~/helpers/utils/composables"
 import { HoppTestResult } from "~/helpers/types/HoppTestResult"
-import { HoppRESTAuth } from "~/helpers/types/HoppRESTAuth"
-import { ValidContentTypes } from "~/helpers/utils/contenttypes"
 import { HoppRequestSaveContext } from "~/helpers/types/HoppRequestSaveContext"
+import { applyBodyTransition } from "~/helpers/rules/BodyTransition"
 
 type RESTSession = {
   request: HoppRESTRequest
@@ -23,12 +24,12 @@ type RESTSession = {
   saveContext: HoppRequestSaveContext | null
 }
 
-export const defaultRESTRequest: HoppRESTRequest = {
+export const getDefaultRESTRequest = (): HoppRESTRequest => ({
   v: RESTReqSchemaVersion,
   endpoint: "https://echo.hoppscotch.io",
   name: "Untitled request",
-  params: [{ key: "", value: "", active: true }],
-  headers: [{ key: "", value: "", active: true }],
+  params: [],
+  headers: [],
   method: "GET",
   auth: {
     authType: "none",
@@ -40,10 +41,10 @@ export const defaultRESTRequest: HoppRESTRequest = {
     contentType: null,
     body: null,
   },
-}
+})
 
 const defaultRESTSession: RESTSession = {
-  request: defaultRESTRequest,
+  request: getDefaultRESTRequest(),
   response: null,
   testResults: null,
   saveContext: null,
@@ -204,55 +205,11 @@ const dispatchers = defineDispatchers({
     { newContentType }: { newContentType: ValidContentTypes | null }
   ) {
     // TODO: persist body evenafter switching content typees
-    if (curr.request.body.contentType !== "multipart/form-data") {
-      if (newContentType === "multipart/form-data") {
-        // Going from non-formdata to form-data, discard contents and set empty array as body
-        return {
-          request: {
-            ...curr.request,
-            body: <HoppRESTReqBody>{
-              contentType: "multipart/form-data",
-              body: [],
-            },
-          },
-        }
-      } else {
-        // non-formdata to non-formdata, keep body and set content type
-        return {
-          request: {
-            ...curr.request,
-            body: <HoppRESTReqBody>{
-              contentType: newContentType,
-              body:
-                newContentType === null
-                  ? null
-                  : (curr.request.body as any)?.body ?? "",
-            },
-          },
-        }
-      }
-    } else if (newContentType !== "multipart/form-data") {
-      // Going from formdata to non-formdata, discard contents and set empty string
-      return {
-        request: {
-          ...curr.request,
-          body: <HoppRESTReqBody>{
-            contentType: newContentType,
-            body: "",
-          },
-        },
-      }
-    } else {
-      // form-data to form-data ? just set the content type ¯\_(ツ)_/¯
-      return {
-        request: {
-          ...curr.request,
-          body: <HoppRESTReqBody>{
-            contentType: newContentType,
-            body: curr.request.body.body,
-          },
-        },
-      }
+    return {
+      request: {
+        ...curr.request,
+        body: applyBodyTransition(curr.request.body, newContentType),
+      },
     }
   },
   addFormDataEntry(curr: RESTSession, { entry }: { entry: FormDataKeyValue }) {
@@ -387,7 +344,7 @@ export function getRESTSaveContext() {
 }
 
 export function resetRESTRequest() {
-  setRESTRequest(defaultRESTRequest)
+  setRESTRequest(getDefaultRESTRequest())
 }
 
 export function setRESTEndpoint(newEndpoint: string) {
@@ -689,7 +646,10 @@ export const restResponse$ = restSessionStore.subject$.pipe(
 export const completedRESTResponse$ = restResponse$.pipe(
   filter(
     (res) =>
-      res !== null && res.type !== "loading" && res.type !== "network_fail"
+      res !== null &&
+      res.type !== "loading" &&
+      res.type !== "network_fail" &&
+      res.type !== "script_fail"
   )
 )
 

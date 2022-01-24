@@ -16,6 +16,8 @@
       @keyup="$emit('keyup', $event)"
       @click="$emit('click', $event)"
       @keydown="$emit('keydown', $event)"
+      @paste="handlePaste"
+      @compositionend="handleCompositionEnd"
     ></div>
   </div>
 </template>
@@ -71,7 +73,7 @@ export default defineComponent({
       highlightEnabled: true,
       highlightStyle: "",
       caseSensitive: true,
-      fireOn: "keydown",
+      fireOn: "input",
       fireOnEnabled: true,
     }
   },
@@ -113,11 +115,23 @@ export default defineComponent({
   },
 
   methods: {
-    handleChange() {
+    handleCompositionEnd() {
+      this.handleChange()
+    },
+    handlePaste(ev) {
+      this.handleChange()
+      this.$emit("paste", { event: ev, previousValue: this.internalValue })
+    },
+    handleChange(e = null) {
+      if (e && "inputType" in e && e.inputType === "insertCompositionText") {
+        return
+      }
       this.debouncedHandler = debounce(function () {
-        if (this.internalValue !== this.$refs.editor.textContent) {
-          this.internalValue = this.$refs.editor.textContent
-          this.processHighlights()
+        if (this.$refs.editor) {
+          if (this.internalValue !== this.$refs.editor.textContent) {
+            this.internalValue = this.$refs.editor.textContent
+            this.processHighlights()
+          }
         }
       }, 5)
       this.debouncedHandler()
@@ -461,7 +475,8 @@ export default defineComponent({
       return "choose an environment"
     },
     getEnvValue(value) {
-      if (value) return value
+      if (value) return value.replace(/"/g, "&quot;")
+      // it does not filter special characters before adding them to HTML.
       return "not found"
     },
   },
@@ -478,14 +493,13 @@ export default defineComponent({
 [contenteditable] {
   @apply select-text;
   @apply text-secondaryDark;
-  @apply font-medium;
 
   &:empty {
     @apply leading-loose;
 
     &::before {
       @apply text-secondary;
-      @apply opacity-25;
+      @apply opacity-35;
       @apply pointer-events-none;
 
       content: attr(placeholder);

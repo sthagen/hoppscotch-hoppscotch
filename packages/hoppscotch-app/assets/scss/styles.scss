@@ -1,12 +1,15 @@
-*,
-*::before,
-*::after {
+* {
   @apply backface-hidden;
+  @apply before:backface-hidden;
+  @apply after:backface-hidden;
+  @apply selection:bg-accentDark;
+  @apply selection:text-accentContrast;
 }
 
 :root {
   @apply antialiased;
 
+  accent-color: var(--accent-color);
   font-variant-ligatures: common-ligatures;
 }
 
@@ -18,7 +21,8 @@
   @apply bg-divider bg-clip-content;
   @apply rounded-full;
   @apply border-solid border-transparent border-4;
-  @apply hover:(bg-dividerDark bg-clip-content);
+  @apply hover:bg-dividerDark;
+  @apply hover:bg-clip-content;
 }
 
 ::-webkit-scrollbar {
@@ -26,20 +30,19 @@
   @apply h-4;
 }
 
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .hide-scrollbar::-webkit-scrollbar {
   @apply hidden;
 }
 
-::selection {
-  @apply bg-accent;
-  @apply text-accentContrast;
-}
-
 input::placeholder,
-textarea::placeholder,
-.CodeMirror-empty {
+textarea::placeholder {
   @apply text-secondary;
-  @apply opacity-25;
+  @apply opacity-35;
 }
 
 input,
@@ -58,11 +61,10 @@ body {
   @apply font-medium;
   @apply select-none;
   @apply overflow-x-hidden;
+  @apply text-body;
+  @apply leading-body;
 
   animation: fade 300ms forwards;
-  font-size: var(--body-font-size);
-  line-height: var(--body-line-height);
-  overflow: overlay;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }
@@ -97,16 +99,18 @@ body {
 
 .material-icons {
   @apply flex-shrink-0;
+  @apply overflow-hidden;
 
-  font-size: var(--body-line-height) !important;
-  width: var(--body-line-height);
+  font-size: var(--line-height-body) !important;
+  width: var(--line-height-body);
 }
 
 .svg-icons {
   @apply flex-shrink-0;
+  @apply overflow-hidden;
 
-  height: var(--body-line-height);
-  width: var(--body-line-height);
+  height: var(--line-height-body);
+  width: var(--line-height-body);
 }
 
 a {
@@ -115,9 +119,8 @@ a {
   @apply no-underline;
   @apply outline-none;
   @apply transition;
-
-  font-size: var(--body-font-size);
-  line-height: var(--body-line-height);
+  @apply text-body;
+  @apply leading-body;
 
   &.link {
     @apply items-center;
@@ -126,48 +129,48 @@ a {
     @apply text-accent;
     @apply rounded;
     @apply hover:text-accentDark;
-    @apply focus-visible:(ring ring-accent);
+    @apply focus-visible:ring;
+    @apply focus-visible:ring-accent;
   }
 }
 
-.tippy-popper {
-  .tooltip-theme {
-    @apply bg-tooltip;
-    @apply text-primary;
-    @apply font-semibold;
-    @apply py-1 px-2;
+.tooltip-theme {
+  @apply bg-tooltip;
+  @apply text-primary;
+  @apply font-semibold;
+  @apply py-1 px-2;
+  @apply rounded;
+  @apply truncate;
+  @apply shadow;
+  @apply leading-body;
+
+  font-size: 86%;
+
+  kbd {
+    @apply hidden;
+    @apply sm:inline-flex;
+    @apply font-sans;
+    @apply bg-gray-500;
+    @apply bg-opacity-45;
+    @apply text-primaryLight;
+    @apply rounded-sm;
+    @apply px-1;
+    @apply ml-1;
     @apply truncate;
-    @apply shadow;
-
-    font-size: 88%;
-    line-height: var(--body-line-height);
-
-    kbd {
-      @apply inline-flex;
-      @apply font-sans;
-      @apply bg-gray-500;
-      @apply bg-opacity-45;
-      @apply text-primaryLight;
-      @apply rounded-sm;
-      @apply px-1;
-      @apply ml-1;
-      @apply truncate;
-    }
   }
+}
 
-  .popover-theme {
-    @apply bg-popover;
-    @apply text-secondary;
-    @apply p-2;
-    @apply shadow-lg;
-    @apply focus:outline-none;
+.popover-theme {
+  @apply bg-popover;
+  @apply text-secondary;
+  @apply p-2;
+  @apply shadow-lg;
+  @apply text-body;
+  @apply leading-body;
+  @apply focus:outline-none;
 
-    font-size: var(--body-font-size);
-    line-height: var(--body-line-height);
-
-    .tippy-roundarrow svg {
-      @apply fill-popover;
-    }
+  .tippy-roundarrow svg {
+    @apply fill-popover;
   }
 }
 
@@ -211,13 +214,12 @@ input,
 select,
 textarea,
 button {
-  @apply focus:outline-none;
   @apply truncate;
   @apply transition;
+  @apply text-body;
+  @apply leading-body;
+  @apply focus:outline-none;
   @apply disabled:cursor-not-allowed;
-
-  font-size: var(--body-font-size);
-  line-height: var(--body-line-height);
 }
 
 .input[type="file"],
@@ -227,7 +229,6 @@ button {
 }
 
 .floating-input ~ label {
-  @apply font-medium;
   @apply py-0.5;
   @apply px-2;
   @apply m-2;
@@ -243,7 +244,7 @@ button {
   @apply transform;
   @apply origin-top-left;
   @apply scale-75;
-  @apply -translate-y-5;
+  @apply -translate-y-4;
   @apply translate-x-1;
 }
 
@@ -285,37 +286,6 @@ pre.ace_editor {
   }
 }
 
-input[type="checkbox"] {
-  @apply hidden;
-
-  &,
-  & + label {
-    @apply align-middle;
-    @apply cursor-pointer;
-
-    &::before {
-      @apply border-divider border-2;
-      @apply rounded;
-      @apply inline-flex;
-      @apply items-center;
-      @apply justify-center;
-      @apply text-transparent;
-      @apply h-4;
-      @apply w-4;
-      @apply font-icon;
-
-      content: "\e876";
-      margin: 8px 8px 8px 0;
-    }
-  }
-
-  &:checked + label::before {
-    @apply bg-accent;
-    @apply border-accent;
-    @apply text-primary;
-  }
-}
-
 .info-response {
   @apply text-pink-500;
 }
@@ -345,13 +315,12 @@ input[type="checkbox"] {
     &.toasted-primary {
       @apply bg-tooltip;
       @apply text-primary;
-      @apply justify-start;
+      @apply justify-between;
       @apply shadow;
       @apply font-medium;
       @apply transition;
-
-      font-size: var(--body-font-size);
-      line-height: var(--body-line-height);
+      @apply text-body;
+      @apply leading-body;
 
       .action {
         @apply bg-gray-500;
@@ -363,11 +332,11 @@ input[type="checkbox"] {
         @apply rounded;
         @apply text-current;
         @apply normal-case;
-        @apply hover:(bg-opacity-20 no-underline);
         @apply font-medium;
-
-        font-size: var(--body-font-size);
-        line-height: var(--body-line-height);
+        @apply text-body;
+        @apply leading-body;
+        @apply hover:bg-opacity-20;
+        @apply hover:no-underline;
       }
     }
 
@@ -418,9 +387,9 @@ input[type="checkbox"] {
 .smart-splitter .splitpanes__splitter::before {
   @apply absolute;
   @apply inset-0;
-  @apply bg-dividerLight;
+  @apply bg-accentLight;
   @apply opacity-0;
-  @apply z-30;
+  @apply z-20;
   @apply transition;
 
   content: "";
@@ -429,7 +398,7 @@ input[type="checkbox"] {
 .smart-splitter .splitpanes__splitter::after {
   @apply absolute;
   @apply inset-0;
-  @apply z-30;
+  @apply z-20;
   @apply transition;
   @apply flex;
   @apply items-center;
@@ -462,30 +431,36 @@ input[type="checkbox"] {
   @apply w-full;
 }
 
-.CodeMirror {
-  @apply !h-auto;
+.cm-focused {
+  @apply select-auto;
+  @apply !outline-none;
 
-  font-size: var(--body-font-size);
-
-  &:not(.CodeMirror-focused) .CodeMirror-activeline-background {
-    background: transparent !important;
-  }
-
-  .CodeMirror-dialog-top {
+  .cm-activeLine {
     @apply bg-primaryLight;
-    @apply border-dividerLight;
-    @apply px-4;
-    @apply py-2;
-    @apply z-5;
   }
 
-  .CodeMirror-scroll {
-    @apply min-h-64;
+  .cm-activeLineGutter {
+    @apply bg-primaryDark;
   }
+}
 
-  * {
-    font-family: "Roboto Mono", monospace;
-  }
+.shortcut-key {
+  @apply inline-flex;
+  @apply font-sans;
+  @apply text-tiny;
+  @apply bg-divider;
+  @apply rounded;
+  @apply ml-2;
+  @apply px-1;
+  @apply transition;
+}
+
+.capitalize-first {
+  @apply first-letter:capitalize;
+}
+
+details summary::-webkit-details-marker {
+  @apply hidden;
 }
 
 @media (max-width: 767px) {

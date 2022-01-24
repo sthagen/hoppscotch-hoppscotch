@@ -11,6 +11,7 @@ import {
   query,
   updateDoc,
 } from "firebase/firestore"
+import { FormDataKeyValue } from "@hoppscotch/data"
 import { currentUser$ } from "./auth"
 import { settingsStore } from "~/newstore/settings"
 import {
@@ -47,12 +48,39 @@ let loadedRESTHistory = false
  */
 let loadedGraphqlHistory = false
 
-async function writeHistory(entry: any, col: HistoryFBCollections) {
+const purgeFormDataFromRequest = (req: RESTHistoryEntry): RESTHistoryEntry => {
+  if (req.request.body.contentType !== "multipart/form-data") return req
+
+  req.request.body.body = req.request.body.body.map<FormDataKeyValue>(
+    (formData) => {
+      if (!formData.isFile) return formData
+
+      return {
+        active: formData.active,
+        isFile: false, // Something we can do to keep the status ?
+        key: formData.key,
+        value: "",
+      }
+    }
+  )
+
+  return req
+}
+
+async function writeHistory(
+  entry: RESTHistoryEntry | GQLHistoryEntry,
+  col: HistoryFBCollections
+) {
+  const processedEntry =
+    col === "history"
+      ? purgeFormDataFromRequest(entry as RESTHistoryEntry)
+      : entry
+
   if (currentUser$.value == null)
     throw new Error("User not logged in to sync history")
 
   const hs = {
-    ...entry,
+    ...processedEntry,
     updatedOn: new Date(),
   }
 
@@ -67,7 +95,10 @@ async function writeHistory(entry: any, col: HistoryFBCollections) {
   }
 }
 
-async function deleteHistory(entry: any, col: HistoryFBCollections) {
+async function deleteHistory(
+  entry: (RESTHistoryEntry | GQLHistoryEntry) & { id: string },
+  col: HistoryFBCollections
+) {
   if (currentUser$.value == null)
     throw new Error("User not logged in to delete history")
 
@@ -89,10 +120,13 @@ async function clearHistory(col: HistoryFBCollections) {
     collection(getFirestore(), "users", currentUser$.value.uid, col)
   )
 
-  await Promise.all(docs.map((e) => deleteHistory(e, col)))
+  await Promise.all(docs.map((e) => deleteHistory(e as any, col)))
 }
 
-async function toggleStar(entry: any, col: HistoryFBCollections) {
+async function toggleStar(
+  entry: (RESTHistoryEntry | GQLHistoryEntry) & { id: string },
+  col: HistoryFBCollections
+) {
   if (currentUser$.value == null)
     throw new Error("User not logged in to toggle star")
 
@@ -172,6 +206,7 @@ export function initHistory() {
           historyRef.forEach((doc) => {
             const entry = doc.data()
             entry.id = doc.id
+            entry.updatedOn = doc.data().updatedOn.toDate()
             history.push(translateToNewRESTHistory(entry))
           })
 
@@ -193,6 +228,7 @@ export function initHistory() {
           historyRef.forEach((doc) => {
             const entry = doc.data()
             entry.id = doc.id
+            entry.updatedOn = doc.data().updatedOn.toDate()
             history.push(translateToNewGQLHistory(entry))
           })
 

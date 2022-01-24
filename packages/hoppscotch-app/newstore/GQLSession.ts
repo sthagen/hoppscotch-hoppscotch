@@ -1,11 +1,7 @@
 import { distinctUntilChanged, pluck } from "rxjs/operators"
+import { GQLHeader, HoppGQLRequest, makeGQLRequest } from "@hoppscotch/data"
 import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
 import { useStream } from "~/helpers/utils/composables"
-import {
-  GQLHeader,
-  HoppGQLRequest,
-  makeGQLRequest,
-} from "~/helpers/types/HoppGQLRequest"
 
 type GQLSession = {
   request: HoppGQLRequest
@@ -15,10 +11,12 @@ type GQLSession = {
 
 export const defaultGQLSession: GQLSession = {
   request: makeGQLRequest({
-    name: "",
+    name: "Untitled request",
     url: "https://echo.hoppscotch.io/graphql",
     headers: [],
-    variables: `{ "id": "1" }`,
+    variables: `{
+  "id": "1"
+}`,
     query: `query Request {
   method
   url
@@ -217,7 +215,7 @@ export function setGQLSession(session: GQLSession) {
 }
 
 export function useGQLRequestName() {
-  return useStream(gqlName$, "", (newName) => {
+  return useStream(gqlName$, gqlSessionStore.value.request.name, (newName) => {
     gqlSessionStore.dispatch({
       dispatcher: "setName",
       payload: { newName },

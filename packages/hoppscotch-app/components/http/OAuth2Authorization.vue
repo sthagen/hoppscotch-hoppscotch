@@ -1,46 +1,46 @@
 <template>
   <div class="flex flex-col">
-    <div class="border-b border-dividerLight flex">
+    <div class="flex border-b border-dividerLight">
       <input
         id="oidcDiscoveryURL"
         v-model="oidcDiscoveryURL"
-        class="bg-transparent flex flex-1 py-2 px-4"
+        class="flex flex-1 px-4 py-2 bg-transparent"
         placeholder="OpenID Connect Discovery URL"
         name="oidcDiscoveryURL"
       />
     </div>
-    <div class="border-b border-dividerLight flex">
+    <div class="flex border-b border-dividerLight">
       <input
         id="authURL"
         v-model="authURL"
-        class="bg-transparent flex flex-1 py-2 px-4"
+        class="flex flex-1 px-4 py-2 bg-transparent"
         placeholder="Authentication URL"
         name="authURL"
       />
     </div>
-    <div class="border-b border-dividerLight flex">
+    <div class="flex border-b border-dividerLight">
       <input
         id="accessTokenURL"
         v-model="accessTokenURL"
-        class="bg-transparent flex flex-1 py-2 px-4"
+        class="flex flex-1 px-4 py-2 bg-transparent"
         placeholder="Access Token URL"
         name="accessTokenURL"
       />
     </div>
-    <div class="border-b border-dividerLight flex">
+    <div class="flex border-b border-dividerLight">
       <input
         id="clientID"
         v-model="clientID"
-        class="bg-transparent flex flex-1 py-2 px-4"
+        class="flex flex-1 px-4 py-2 bg-transparent"
         placeholder="Client ID"
         name="clientID"
       />
     </div>
-    <div class="border-b border-dividerLight flex">
+    <div class="flex border-b border-dividerLight">
       <input
         id="scope"
         v-model="scope"
-        class="bg-transparent flex flex-1 py-2 px-4"
+        class="flex flex-1 px-4 py-2 bg-transparent"
         placeholder="Scope"
         name="scope"
       />
@@ -48,7 +48,7 @@
     <div class="p-2">
       <ButtonSecondary
         filled
-        :label="`${$t('authorization.generate_token')}`"
+        :label="`${t('authorization.generate_token')}`"
         @click.native="handleAccessTokenRequest()"
       />
     </div>
@@ -56,19 +56,21 @@
 </template>
 
 <script lang="ts">
-import { Ref, useContext } from "@nuxtjs/composition-api"
-import { pluckRef, useStream } from "~/helpers/utils/composables"
-import { HoppRESTAuthOAuth2 } from "~/helpers/types/HoppRESTAuth"
+import { Ref } from "@nuxtjs/composition-api"
+import { HoppRESTAuthOAuth2 } from "@hoppscotch/data"
+import {
+  pluckRef,
+  useI18n,
+  useStream,
+  useToast,
+} from "~/helpers/utils/composables"
 import { restAuth$, setRESTAuth } from "~/newstore/RESTSession"
 import { tokenRequest } from "~/helpers/oauth"
 
 export default {
   setup() {
-    const {
-      $toast,
-      app: { i18n },
-    } = useContext()
-    const $t = i18n.t.bind(i18n)
+    const t = useI18n()
+    const toast = useToast()
 
     const auth = useStream(
       restAuth$,
@@ -97,9 +99,7 @@ export default {
         oidcDiscoveryURL.value === "" &&
         (authURL.value === "" || accessTokenURL.value === "")
       ) {
-        $toast.error(`${$t("complete_config_urls")}`, {
-          icon: "error",
-        })
+        toast.error(`${t("complete_config_urls")}`)
         return
       }
       try {
@@ -113,9 +113,7 @@ export default {
         }
         await tokenRequest(tokenReqParams)
       } catch (e) {
-        $toast.error(`${e}`, {
-          icon: "code",
-        })
+        toast.error(`${e}`)
       }
     }
 
@@ -126,6 +124,7 @@ export default {
       clientID,
       scope,
       handleAccessTokenRequest,
+      t,
     }
   },
 }

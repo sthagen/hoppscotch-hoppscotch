@@ -7,7 +7,7 @@
     @close="hideModal"
   >
     <template #body>
-      <div v-if="mode === 'sign-in'" class="flex flex-col space-y-2 px-2">
+      <div v-if="mode === 'sign-in'" class="flex flex-col px-2 space-y-2">
         <SmartItem
           :loading="signingInWithGitHub"
           svg="auth/github"
@@ -56,9 +56,9 @@
         />
       </form>
       <div v-if="mode === 'email-sent'" class="flex flex-col px-4">
-        <div class="flex flex-col max-w-md justify-center items-center">
-          <SmartIcon class="h-6 text-accent w-6" name="inbox" />
-          <h3 class="my-2 text-center text-lg">
+        <div class="flex flex-col items-center justify-center max-w-md">
+          <SmartIcon class="w-6 h-6 text-accent" name="inbox" />
+          <h3 class="my-2 text-lg text-center">
             {{ $t("auth.we_sent_magic_link") }}
           </h3>
           <p class="text-center">
@@ -95,7 +95,7 @@
       </p>
       <p
         v-if="mode === 'email-sent'"
-        class="flex flex-1 text-secondaryLight justify-between"
+        class="flex justify-between flex-1 text-secondaryLight"
       >
         <SmartAnchor
           class="link"
@@ -155,9 +155,7 @@ export default defineComponent({
   },
   methods: {
     showLoginSuccess() {
-      this.$toast.success(`${this.$t("auth.login_success")}`, {
-        icon: "vpn_key",
-      })
+      this.$toast.success(`${this.$t("auth.login_success")}`)
     },
     async signInWithGoogle() {
       this.signingInWithGoogle = true
@@ -174,7 +172,6 @@ export default defineComponent({
           // The pending Google credential.
           const pendingCred = e.credential
           this.$toast.info(`${this.$t("auth.account_exists")}`, {
-            icon: "vpn_key",
             duration: 0,
             closeOnSwipe: false,
             action: {
@@ -190,9 +187,7 @@ export default defineComponent({
             },
           })
         } else {
-          this.$toast.error(`${this.$t("error.something_went_wrong")}`, {
-            icon: "error_outline",
-          })
+          this.$toast.error(`${this.$t("error.something_went_wrong")}`)
         }
       }
 
@@ -218,7 +213,6 @@ export default defineComponent({
           // The pending Google credential.
           const pendingCred = e.credential
           this.$toast.info(`${this.$t("auth.account_exists")}`, {
-            icon: "vpn_key",
             duration: 0,
             closeOnSwipe: false,
             action: {
@@ -234,9 +228,7 @@ export default defineComponent({
             },
           })
         } else {
-          this.$toast.error(`${this.$t("error.something_went_wrong")}`, {
-            icon: "error_outline",
-          })
+          this.$toast.error(`${this.$t("error.something_went_wrong")}`)
         }
       }
 
@@ -256,9 +248,7 @@ export default defineComponent({
         })
         .catch((e) => {
           console.error(e)
-          this.$toast.error(e.message, {
-            icon: "error_outline",
-          })
+          this.$toast.error(e.message)
           this.signingInWithEmail = false
         })
         .finally(() => {

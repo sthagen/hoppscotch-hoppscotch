@@ -4,8 +4,8 @@
       title="Star Hoppscotch"
       href="https://github.com/hoppscotch/hoppscotch"
       :data-color-scheme="
-        $colorMode.value != 'light'
-          ? $colorMode.value == 'black'
+        colorMode.value != 'light'
+          ? colorMode.value == 'black'
             ? 'dark'
             : 'dark_dimmed'
           : 'light'
@@ -18,19 +18,16 @@
   </transition>
 </template>
 
-<script>
-import { defineComponent } from "@nuxtjs/composition-api"
+<script setup lang="ts">
 import GithubButton from "vue-github-button"
+import { useColorMode } from "~/helpers/utils/composables"
 
-export default defineComponent({
-  components: {
-    GithubButton,
-  },
-  props: {
-    size: {
-      type: String,
-      default: undefined,
-    },
+const colorMode = useColorMode()
+
+defineProps({
+  size: {
+    type: String,
+    default: undefined,
   },
 })
 </script>

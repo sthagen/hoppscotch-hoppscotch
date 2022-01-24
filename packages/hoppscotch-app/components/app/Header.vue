@@ -1,68 +1,70 @@
 <template>
   <div>
     <header
-      class="flex space-x-2 flex-1 py-2 px-2 items-center justify-between"
+      class="flex items-center justify-between flex-1 px-2 py-2 space-x-2"
     >
-      <div class="space-x-2 inline-flex items-center">
+      <div class="inline-flex items-center space-x-2">
         <ButtonSecondary
-          class="tracking-wide !font-bold !text-secondaryDark"
+          class="tracking-wide !font-bold !text-secondaryDark hover:bg-primaryDark focus-visible:bg-primaryDark"
           label="HOPPSCOTCH"
           to="/"
         />
-        <AppGitHubStarButton class="mt-1.5 transition hidden sm:flex" />
+        <AppGitHubStarButton class="mt-1.5 transition <sm:hidden" />
       </div>
-      <div class="space-x-2 inline-flex items-center">
+      <div class="inline-flex items-center space-x-2">
         <ButtonSecondary
           id="installPWA"
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('header.install_pwa')"
+          :title="t('header.install_pwa')"
           svg="download"
-          class="rounded"
+          class="rounded hover:bg-primaryDark focus-visible:bg-primaryDark"
           @click.native="showInstallPrompt()"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="`${$t('app.search')} <kbd>/</kbd>`"
+          :title="`${t('app.search')} <kbd>/</kbd>`"
           svg="search"
-          class="rounded"
-          @click.native="showSearch = true"
+          class="rounded hover:bg-primaryDark focus-visible:bg-primaryDark"
+          @click.native="invokeAction('modals.search.toggle')"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="`${$t('support.title')} <kbd>?</kbd>`"
+          :title="`${t('support.title')} <kbd>?</kbd>`"
           svg="life-buoy"
-          class="rounded"
+          class="rounded hover:bg-primaryDark focus-visible:bg-primaryDark"
           @click.native="showSupport = true"
         />
         <ButtonSecondary
           v-if="currentUser === null"
           svg="upload-cloud"
-          :label="$t('header.save_workspace')"
+          :label="t('header.save_workspace')"
           filled
-          class="hidden !font-semibold md:flex"
+          class="hidden md:flex"
           @click.native="showLogin = true"
         />
         <ButtonPrimary
           v-if="currentUser === null"
-          :label="$t('header.login')"
+          :label="t('header.login')"
           @click.native="showLogin = true"
         />
-        <div v-else class="space-x-2 inline-flex items-center">
+        <div v-else class="inline-flex items-center space-x-2">
           <ButtonPrimary
             v-tippy="{ theme: 'tooltip' }"
-            :title="$t('team.invite_tooltip')"
-            :label="$t('team.invite')"
+            :title="t('team.invite_tooltip')"
+            :label="t('team.invite')"
             svg="user-plus"
-            class="
-              !bg-green-500
-              !text-green-500
-              !bg-opacity-10
-              !hover:bg-opacity-10 !hover:text-green-400 !hover:bg-green-400
-            "
+            class="!bg-green-500 !bg-opacity-15 !text-green-500 !hover:bg-opacity-10 !hover:bg-green-400 !hover:text-green-600"
             @click.native="showTeamsModal = true"
           />
           <span class="px-2">
-            <tippy ref="user" interactive trigger="click" theme="popover" arrow>
+            <tippy
+              ref="options"
+              interactive
+              trigger="click"
+              theme="popover"
+              arrow
+              :on-shown="() => tippyActions.focus()"
+            >
               <template #trigger>
                 <ProfilePicture
                   v-if="currentUser.photoURL"
@@ -78,24 +80,51 @@
                 <ButtonSecondary
                   v-else
                   v-tippy="{ theme: 'tooltip' }"
-                  :title="$t('header.account')"
-                  class="rounded"
+                  :title="t('header.account')"
+                  class="rounded hover:bg-primaryDark focus-visible:bg-primaryDark"
                   svg="user"
                 />
               </template>
-              <SmartItem
-                to="/profile"
-                svg="user"
-                :label="$t('navigation.profile')"
-                @click.native="$refs.user.tippy().hide()"
-              />
-              <SmartItem
-                to="/settings"
-                svg="settings"
-                :label="$t('navigation.settings')"
-                @click.native="$refs.user.tippy().hide()"
-              />
-              <FirebaseLogout @confirm-logout="$refs.user.tippy().hide()" />
+              <div class="flex flex-col px-2 text-tiny">
+                <span class="inline-flex font-semibold truncate">
+                  {{ currentUser.displayName }}
+                </span>
+                <span class="inline-flex truncate text-secondaryLight">
+                  {{ currentUser.email }}
+                </span>
+              </div>
+              <hr />
+              <div
+                ref="tippyActions"
+                class="flex flex-col focus:outline-none"
+                tabindex="0"
+                @keyup.enter="profile.$el.click()"
+                @keyup.s="settings.$el.click()"
+                @keyup.l="logout.$el.click()"
+                @keyup.escape="options.tippy().hide()"
+              >
+                <SmartItem
+                  ref="profile"
+                  to="/profile"
+                  svg="user"
+                  :label="t('navigation.profile')"
+                  :shortcut="['↩']"
+                  @click.native="options.tippy().hide()"
+                />
+                <SmartItem
+                  ref="settings"
+                  to="/settings"
+                  svg="settings"
+                  :label="t('navigation.settings')"
+                  :shortcut="['S']"
+                  @click.native="options.tippy().hide()"
+                />
+                <FirebaseLogout
+                  ref="logout"
+                  :shortcut="['L']"
+                  @confirm-logout="options.tippy().hide()"
+                />
+              </div>
             </tippy>
           </span>
         </div>
@@ -104,24 +133,25 @@
     <AppAnnouncement v-if="!isOnLine" />
     <FirebaseLogin :show="showLogin" @hide-modal="showLogin = false" />
     <AppSupport :show="showSupport" @hide-modal="showSupport = false" />
-    <AppPowerSearch :show="showSearch" @hide-modal="showSearch = false" />
     <TeamsModal :show="showTeamsModal" @hide-modal="showTeamsModal = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, useContext } from "@nuxtjs/composition-api"
+import { onMounted, ref } from "@nuxtjs/composition-api"
 import intializePwa from "~/helpers/pwa"
 import { probableUser$ } from "~/helpers/fb/auth"
 import { getLocalConfig, setLocalConfig } from "~/newstore/localpersistence"
-import { useReadonlyStream } from "~/helpers/utils/composables"
-import { defineActionHandler } from "~/helpers/actions"
+import {
+  useReadonlyStream,
+  useI18n,
+  useToast,
+} from "~/helpers/utils/composables"
+import { defineActionHandler, invokeAction } from "~/helpers/actions"
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
+
+const toast = useToast()
 
 /**
  * Once the PWA code is initialized, this holds a method
@@ -131,7 +161,6 @@ const t = i18n.t.bind(i18n)
 const showInstallPrompt = ref(() => Promise.resolve()) // Async no-op till it is initialized
 
 const showSupport = ref(false)
-const showSearch = ref(false)
 const showLogin = ref(false)
 const showTeamsModal = ref(false)
 
@@ -141,9 +170,6 @@ const currentUser = useReadonlyStream(probableUser$, null)
 
 defineActionHandler("modals.support.toggle", () => {
   showSupport.value = !showSupport.value
-})
-defineActionHandler("modals.search.toggle", () => {
-  showSearch.value = !showSearch.value
 })
 
 onMounted(() => {
@@ -160,12 +186,11 @@ onMounted(() => {
 
   const cookiesAllowed = getLocalConfig("cookiesAllowed") === "yes"
   if (!cookiesAllowed) {
-    $toast.show(t("app.we_use_cookies").toString(), {
-      icon: "cookie",
+    toast.show(`${t("app.we_use_cookies")}`, {
       duration: 0,
       action: [
         {
-          text: t("action.learn_more").toString(),
+          text: `${t("action.learn_more")}`,
           onClick: (_, toastObject) => {
             setLocalConfig("cookiesAllowed", "yes")
             toastObject.goAway(0)
@@ -173,7 +198,7 @@ onMounted(() => {
           },
         },
         {
-          text: t("action.dismiss").toString(),
+          text: `${t("action.dismiss")}`,
           onClick: (_, toastObject) => {
             setLocalConfig("cookiesAllowed", "yes")
             toastObject.goAway(0)
@@ -183,4 +208,11 @@ onMounted(() => {
     })
   }
 })
+
+// Template refs
+const tippyActions = ref<any | null>(null)
+const profile = ref<any | null>(null)
+const settings = ref<any | null>(null)
+const logout = ref<any | null>(null)
+const options = ref<any | null>(null)
 </script>

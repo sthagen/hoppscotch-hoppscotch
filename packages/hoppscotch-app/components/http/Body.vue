@@ -1,17 +1,7 @@
 <template>
   <div>
     <div
-      class="
-        bg-primary
-        border-b border-dividerLight
-        flex flex-1
-        top-upperSecondaryStickyFold
-        pl-4
-        z-10
-        sticky
-        items-center
-        justify-between
-      "
+      class="sticky z-10 flex items-center justify-between flex-1 pl-4 border-b bg-primary border-dividerLight top-upperSecondaryStickyFold"
     >
       <span class="flex items-center">
         <label class="font-semibold text-secondaryLight">
@@ -28,7 +18,7 @@
             <span class="select-wrapper">
               <ButtonSecondary
                 :label="contentType || $t('state.none').toLowerCase()"
-                class="rounded-none ml-2 pr-8"
+                class="pr-8 ml-2 rounded-none"
               />
             </span>
           </template>
@@ -60,26 +50,31 @@
       </span>
     </div>
     <HttpBodyParameters v-if="contentType === 'multipart/form-data'" />
+    <HttpURLEncodedParams
+      v-else-if="contentType === 'application/x-www-form-urlencoded'"
+    />
     <HttpRawBody v-else-if="contentType !== null" :content-type="contentType" />
     <div
       v-if="contentType == null"
-      class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+      class="flex flex-col items-center justify-center p-4 text-secondaryLight"
     >
       <img
         :src="`/images/states/${$colorMode.value}/upload_single_file.svg`"
         loading="lazy"
-        class="flex-col my-4 object-contain object-center h-16 w-16 inline-flex"
+        class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+        :alt="`${$t('empty.body')}`"
       />
-      <span class="text-center pb-4">
+      <span class="pb-4 text-center">
         {{ $t("empty.body") }}
       </span>
       <ButtonSecondary
         outline
         :label="`${$t('app.documentation')}`"
-        to="https://docs.hoppscotch.io"
+        to="https://docs.hoppscotch.io/features/body"
         blank
         svg="external-link"
         reverse
+        class="mb-4"
       />
     </div>
   </div>

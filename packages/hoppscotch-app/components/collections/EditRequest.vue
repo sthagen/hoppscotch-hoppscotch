@@ -35,7 +35,7 @@ import { defineComponent } from "@nuxtjs/composition-api"
 export default defineComponent({
   props: {
     show: Boolean,
-    placeholderReqName: { type: String, default: null },
+    editingRequestName: { type: String, default: null },
   },
   data() {
     return {
@@ -44,12 +44,15 @@ export default defineComponent({
       },
     }
   },
+  watch: {
+    editingRequestName(val) {
+      this.requestUpdateData.name = val
+    },
+  },
   methods: {
     saveRequest() {
       if (!this.requestUpdateData.name) {
-        this.$toast.error(this.$t("request.invalid_name"), {
-          icon: "error_outline",
-        })
+        this.$toast.error(this.$t("request.invalid_name"))
         return
       }
       this.$emit("submit", this.requestUpdateData)

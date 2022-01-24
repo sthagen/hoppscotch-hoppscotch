@@ -6,6 +6,13 @@ import isEmpty from "lodash/isEmpty"
 import * as O from "fp-ts/Option"
 import { pipe } from "fp-ts/function"
 import {
+  safelyExtractRESTRequest,
+  translateToNewRequest,
+  translateToNewRESTCollection,
+  translateToNewGQLCollection,
+} from "@hoppscotch/data"
+import { cloneDeep } from "lodash"
+import {
   settingsStore,
   bulkApplySettings,
   defaultSettings,
@@ -26,8 +33,6 @@ import {
   graphqlCollectionStore,
   setGraphqlCollections,
   setRESTCollections,
-  translateToNewRESTCollection,
-  translateToNewGQLCollection,
 } from "./collections"
 import {
   replaceEnvironments,
@@ -39,8 +44,15 @@ import {
   selectedEnvIndex$,
   setCurrentEnvironment,
 } from "./environments"
-import { restRequest$, setRESTRequest } from "./RESTSession"
-import { translateToNewRequest } from "~/helpers/types/HoppRESTRequest"
+import {
+  getDefaultRESTRequest,
+  restRequest$,
+  setRESTRequest,
+} from "./RESTSession"
+import { WSRequest$, setWSRequest } from "./WebSocketSession"
+import { SIORequest$, setSIORequest } from "./SocketIOSession"
+import { SSERequest$, setSSERequest } from "./SSESession"
+import { MQTTRequest$, setMQTTRequest } from "./MQTTSession"
 
 function checkAndMigrateOldSettings() {
   const vuexData = JSON.parse(window.localStorage.getItem("vuex") || "{}")
@@ -209,6 +221,54 @@ function setupSelectedEnvPersistence() {
   })
 }
 
+function setupWebsocketPersistence() {
+  const request = JSON.parse(
+    window.localStorage.getItem("WebsocketRequest") || "null"
+  )
+
+  setWSRequest(request)
+
+  WSRequest$.subscribe((req) => {
+    window.localStorage.setItem("WebsocketRequest", JSON.stringify(req))
+  })
+}
+
+function setupSocketIOPersistence() {
+  const request = JSON.parse(
+    window.localStorage.getItem("SocketIORequest") || "null"
+  )
+
+  setSIORequest(request)
+
+  SIORequest$.subscribe((req) => {
+    window.localStorage.setItem("SocketIORequest", JSON.stringify(req))
+  })
+}
+
+function setupSSEPersistence() {
+  const request = JSON.parse(
+    window.localStorage.getItem("SSERequest") || "null"
+  )
+
+  setSSERequest(request)
+
+  SSERequest$.subscribe((req) => {
+    window.localStorage.setItem("SSERequest", JSON.stringify(req))
+  })
+}
+
+function setupMQTTPersistence() {
+  const request = JSON.parse(
+    window.localStorage.getItem("MQTTRequest") || "null"
+  )
+
+  setMQTTRequest(request)
+
+  MQTTRequest$.subscribe((req) => {
+    window.localStorage.setItem("MQTTRequest", JSON.stringify(req))
+  })
+}
+
 function setupGlobalEnvsPersistence() {
   const globals: Environment["variables"] = JSON.parse(
     window.localStorage.getItem("globalEnv") || "[]"
@@ -228,11 +288,25 @@ function setupRequestPersistence() {
 
   if (localRequest) {
     const parsedLocal = translateToNewRequest(localRequest)
-    setRESTRequest(parsedLocal)
+    setRESTRequest(
+      safelyExtractRESTRequest(parsedLocal, getDefaultRESTRequest())
+    )
   }
 
   restRequest$.subscribe((req) => {
-    window.localStorage.setItem("restRequest", JSON.stringify(req))
+    const reqClone = cloneDeep(req)
+    if (reqClone.body.contentType === "multipart/form-data") {
+      reqClone.body.body = reqClone.body.body.map((x) => {
+        if (x.isFile)
+          return {
+            ...x,
+            isFile: false,
+            value: "",
+          }
+        else return x
+      })
+    }
+    window.localStorage.setItem("restRequest", JSON.stringify(reqClone))
   })
 }
 
@@ -246,6 +320,10 @@ export function setupLocalPersistence() {
   setupGlobalEnvsPersistence()
   setupEnvironmentsPersistence()
   setupSelectedEnvPersistence()
+  setupWebsocketPersistence()
+  setupSocketIOPersistence()
+  setupSSEPersistence()
+  setupMQTTPersistence()
 }
 
 /**

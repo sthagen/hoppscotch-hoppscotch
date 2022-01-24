@@ -1,17 +1,7 @@
 <template>
-  <AppSection label="bodyParameters">
+  <div>
     <div
-      class="
-        bg-primary
-        border-b border-dividerLight
-        flex flex-1
-        top-upperTertiaryStickyFold
-        pl-4
-        z-10
-        sticky
-        items-center
-        justify-between
-      "
+      class="sticky z-10 flex items-center justify-between flex-1 pl-4 border-b bg-primary border-dividerLight top-upperTertiaryStickyFold"
     >
       <label class="font-semibold text-secondaryLight">
         {{ $t("request.body") }}
@@ -39,9 +29,9 @@
       </div>
     </div>
     <div
-      v-for="(param, index) in bodyParams"
+      v-for="(param, index) in workingParams"
       :key="`param-${index}`"
-      class="divide-x divide-dividerLight border-b border-dividerLight flex"
+      class="flex border-b divide-x divide-dividerLight border-dividerLight"
     >
       <SmartEnvInput
         v-model="param.key"
@@ -64,13 +54,12 @@
       />
       <div v-if="param.isFile" class="file-chips-container hide-scrollbar">
         <div class="space-x-2 file-chips-wrapper">
-          <SmartDeletableChip
+          <SmartFileChip
             v-for="(file, fileIndex) in param.value"
             :key="`param-${index}-file-${fileIndex}`"
-            @chip-delete="chipDelete(index, fileIndex)"
           >
             {{ file.name }}
-          </SmartDeletableChip>
+          </SmartFileChip>
         </div>
       </div>
       <span v-else class="flex flex-1">
@@ -95,21 +84,17 @@
         />
       </span>
       <span>
-        <label for="attachment" class="p-0">
-          <ButtonSecondary
-            class="w-full"
-            svg="paperclip"
-            @click.native="$refs.attachment[index].click()"
+        <label :for="`attachment${index}`" class="p-0">
+          <input
+            :id="`attachment${index}`"
+            :ref="`attachment${index}`"
+            :name="`attachment${index}`"
+            type="file"
+            multiple
+            class="p-1 transition cursor-pointer file:transition file:cursor-pointer text-secondaryLight hover:text-secondaryDark file:mr-2 file:py-1 file:px-4 file:rounded file:border-0 file:text-tiny text-tiny file:text-secondary hover:file:text-secondaryDark file:bg-primaryLight hover:file:bg-primaryDark"
+            @change="setRequestAttachment(index, param, $event)"
           />
         </label>
-        <input
-          ref="attachment"
-          class="input"
-          name="attachment"
-          type="file"
-          multiple
-          @change="setRequestAttachment(index, param, $event)"
-        />
       </span>
       <span>
         <ButtonSecondary
@@ -151,120 +136,175 @@
     </div>
     <div
       v-if="bodyParams.length === 0"
-      class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+      class="flex flex-col items-center justify-center p-4 text-secondaryLight"
     >
       <img
         :src="`/images/states/${$colorMode.value}/upload_single_file.svg`"
         loading="lazy"
-        class="flex-col my-4 object-contain object-center h-16 w-16 inline-flex"
+        class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+        :alt="`${$t('empty.body')}`"
       />
-      <span class="text-center pb-4">
+      <span class="pb-4 text-center">
         {{ $t("empty.body") }}
       </span>
       <ButtonSecondary
         :label="`${$t('add.new')}`"
         filled
         svg="plus"
+        class="mb-4"
         @click.native="addBodyParam"
       />
     </div>
-  </AppSection>
+  </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, onMounted, Ref, watch } from "@nuxtjs/composition-api"
-import { FormDataKeyValue } from "~/helpers/types/HoppRESTRequest"
-import { pluckRef } from "~/helpers/utils/composables"
-import {
-  addFormDataEntry,
-  deleteAllFormDataEntries,
-  deleteFormDataEntry,
-  updateFormDataEntry,
-  useRESTRequestBody,
-} from "~/newstore/RESTSession"
+<script setup lang="ts">
+import { ref, Ref, watch } from "@nuxtjs/composition-api"
+import { FormDataKeyValue } from "@hoppscotch/data"
+import isEqual from "lodash/isEqual"
+import { clone } from "lodash"
+import { pluckRef, useI18n, useToast } from "~/helpers/utils/composables"
+import { useRESTRequestBody } from "~/newstore/RESTSession"
 
-export default defineComponent({
-  setup() {
-    const bodyParams = pluckRef<any, any>(useRESTRequestBody(), "body") as Ref<
-      FormDataKeyValue[]
-    >
+const t = useI18n()
 
-    const addBodyParam = () => {
-      addFormDataEntry({ key: "", value: "", active: true, isFile: false })
-    }
+const toast = useToast()
 
-    const updateBodyParam = (index: number, entry: FormDataKeyValue) => {
-      updateFormDataEntry(index, entry)
-    }
+const deletionToast = ref<{ goAway: (delay: number) => void } | null>(null)
 
-    const deleteBodyParam = (index: number) => {
-      deleteFormDataEntry(index)
-    }
+const bodyParams = pluckRef<any, any>(useRESTRequestBody(), "body") as Ref<
+  FormDataKeyValue[]
+>
 
-    const clearContent = () => {
-      deleteAllFormDataEntries()
-    }
+// The UI representation of the parameters list (has the empty end param)
+const workingParams = ref<FormDataKeyValue[]>([
+  {
+    key: "",
+    value: "",
+    active: true,
+    isFile: false,
+  },
+])
 
-    const chipDelete = (paramIndex: number, fileIndex: number) => {
-      const entry = bodyParams.value[paramIndex]
-      if (entry.isFile) {
-        entry.value.splice(fileIndex, 1)
-        if (entry.value.length === 0) {
-          updateFormDataEntry(paramIndex, {
-            ...entry,
-            isFile: false,
-            value: "",
-          })
-          return
-        }
-      }
+// Rule: Working Params always have last element is always an empty param
+watch(workingParams, (paramsList) => {
+  if (paramsList.length > 0 && paramsList[paramsList.length - 1].key !== "") {
+    workingParams.value.push({
+      key: "",
+      value: "",
+      active: true,
+      isFile: false,
+    })
+  }
+})
 
-      updateFormDataEntry(paramIndex, entry)
-    }
-
-    const setRequestAttachment = (
-      index: number,
-      entry: FormDataKeyValue,
-      event: InputEvent
-    ) => {
-      const fileEntry: FormDataKeyValue = {
-        ...entry,
-        isFile: true,
-        value: Array.from((event.target as HTMLInputElement).files!),
-      }
-      updateFormDataEntry(index, fileEntry)
-    }
-
-    watch(
-      bodyParams,
-      () => {
-        if (
-          bodyParams.value.length > 0 &&
-          (bodyParams.value[bodyParams.value.length - 1].key !== "" ||
-            bodyParams.value[bodyParams.value.length - 1].value !== "")
-        )
-          addBodyParam()
-      },
-      { deep: true }
+// Sync logic between params and working params
+watch(
+  bodyParams,
+  (newParamsList) => {
+    // Sync should overwrite working params
+    const filteredWorkingParams = workingParams.value.filter(
+      (e) => e.key !== ""
     )
 
-    onMounted(() => {
-      if (!bodyParams.value?.length) {
-        addBodyParam()
-      }
-    })
-
-    return {
-      bodyParams,
-      addBodyParam,
-      updateBodyParam,
-      deleteBodyParam,
-      clearContent,
-      setRequestAttachment,
-      chipDelete,
+    if (!isEqual(newParamsList, filteredWorkingParams)) {
+      workingParams.value = newParamsList
     }
   },
+  { immediate: true }
+)
+
+watch(workingParams, (newWorkingParams) => {
+  const fixedParams = newWorkingParams.filter((e) => e.key !== "")
+  if (!isEqual(bodyParams.value, fixedParams)) {
+    bodyParams.value = fixedParams
+  }
 })
+
+const addBodyParam = () => {
+  workingParams.value.push({
+    key: "",
+    value: "",
+    active: true,
+    isFile: false,
+  })
+}
+
+const updateBodyParam = (index: number, param: FormDataKeyValue) => {
+  workingParams.value = workingParams.value.map((h, i) =>
+    i === index ? param : h
+  )
+}
+
+const deleteBodyParam = (index: number) => {
+  const paramsBeforeDeletion = clone(workingParams.value)
+
+  if (
+    !(
+      paramsBeforeDeletion.length > 0 &&
+      index === paramsBeforeDeletion.length - 1
+    )
+  ) {
+    if (deletionToast.value) {
+      deletionToast.value.goAway(0)
+      deletionToast.value = null
+    }
+
+    deletionToast.value = toast.success(`${t("state.deleted")}`, {
+      action: [
+        {
+          text: `${t("action.undo")}`,
+          onClick: (_, toastObject) => {
+            workingParams.value = paramsBeforeDeletion
+            toastObject.goAway(0)
+            deletionToast.value = null
+          },
+        },
+      ],
+
+      onComplete: () => {
+        deletionToast.value = null
+      },
+    })
+  }
+
+  workingParams.value.splice(index, 1)
+}
+
+const clearContent = () => {
+  // set params list to the initial state
+  workingParams.value = [
+    {
+      key: "",
+      value: "",
+      active: true,
+      isFile: false,
+    },
+  ]
+}
+
+const setRequestAttachment = (
+  index: number,
+  entry: FormDataKeyValue,
+  event: InputEvent
+) => {
+  // check if file exists or not
+  if ((event.target as HTMLInputElement).files?.length === 0) {
+    updateBodyParam(index, {
+      ...entry,
+      isFile: false,
+      value: "",
+    })
+    return
+  }
+
+  const fileEntry: FormDataKeyValue = {
+    ...entry,
+    isFile: true,
+    value: Array.from((event.target as HTMLInputElement).files!),
+  }
+  updateBodyParam(index, fileEntry)
+}
 </script>
 
 <style scoped lang="scss">
@@ -276,8 +316,7 @@ export default defineComponent({
 
   .file-chips-wrapper {
     @apply flex;
-    @apply px-4;
-    @apply py-1;
+    @apply p-1;
     @apply w-0;
   }
 }

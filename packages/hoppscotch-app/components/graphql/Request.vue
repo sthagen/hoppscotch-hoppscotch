@@ -1,32 +1,21 @@
 <template>
-  <div class="bg-primary flex p-4 top-0 z-10 sticky">
-    <div class="space-x-2 flex-1 inline-flex">
+  <div class="sticky top-0 z-10 flex p-4 bg-primary">
+    <div class="inline-flex flex-1 space-x-2">
       <input
         id="url"
         v-model="url"
-        v-focus
         type="url"
         autocomplete="off"
         spellcheck="false"
-        class="
-          bg-primaryLight
-          border border-divider
-          rounded
-          text-secondaryDark
-          w-full
-          py-2
-          px-4
-          hover:border-dividerDark
-          focus-visible:bg-transparent focus-visible:border-dividerDark
-        "
-        :placeholder="$t('request.url')"
+        class="w-full px-4 py-2 border rounded bg-primaryLight border-divider text-secondaryDark hover:border-dividerDark focus-visible:bg-transparent focus-visible:border-dividerDark"
+        :placeholder="`${t('request.url')}`"
         :disabled="connected"
         @keyup.enter="onConnectClick"
       />
       <ButtonPrimary
         id="get"
         name="get"
-        :label="!connected ? $t('action.connect') : $t('action.disconnect')"
+        :label="!connected ? t('action.connect') : t('action.disconnect')"
         class="w-32"
         @click.native="onConnectClick"
       />
@@ -38,8 +27,14 @@
 import { logHoppRequestRunToAnalytics } from "~/helpers/fb/analytics"
 import { GQLConnection } from "~/helpers/GQLConnection"
 import { getCurrentStrategyID } from "~/helpers/network"
-import { useReadonlyStream, useStream } from "~/helpers/utils/composables"
+import {
+  useReadonlyStream,
+  useStream,
+  useI18n,
+} from "~/helpers/utils/composables"
 import { gqlHeaders$, gqlURL$, setGQLURL } from "~/newstore/GQLSession"
+
+const t = useI18n()
 
 const props = defineProps<{
   conn: GQLConnection

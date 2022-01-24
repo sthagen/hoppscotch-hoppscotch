@@ -9,7 +9,10 @@
   >
     <Pane size="75" min-size="65" class="hide-scrollbar !overflow-auto">
       <Splitpanes class="smart-splitter" :horizontal="COLUMN_LAYOUT">
-        <Pane class="hide-scrollbar !overflow-auto">
+        <Pane
+          :size="COLUMN_LAYOUT ? 45 : 50"
+          class="hide-scrollbar !overflow-auto"
+        >
           <HttpRequest />
           <SmartTabs styles="sticky bg-primary top-upperPrimaryStickyFold z-10">
             <SmartTab
@@ -43,16 +46,26 @@
             <SmartTab
               :id="'preRequestScript'"
               :label="`${$t('tab.pre_request_script')}`"
+              :indicator="
+                preRequestScript && preRequestScript.length > 0 ? true : false
+              "
             >
               <HttpPreRequestScript />
             </SmartTab>
 
-            <SmartTab :id="'tests'" :label="`${$t('tab.tests')}`">
+            <SmartTab
+              :id="'tests'"
+              :label="`${$t('tab.tests')}`"
+              :indicator="testScript && testScript.length > 0 ? true : false"
+            >
               <HttpTests />
             </SmartTab>
           </SmartTabs>
         </Pane>
-        <Pane class="hide-scrollbar !overflow-auto">
+        <Pane
+          :size="COLUMN_LAYOUT ? 65 : 50"
+          class="flex flex-col hide-scrollbar !overflow-auto"
+        >
           <HttpResponse ref="response" />
         </Pane>
       </Splitpanes>
@@ -101,7 +114,6 @@
 
 <script lang="ts">
 import {
-  computed,
   defineComponent,
   onBeforeMount,
   onBeforeUnmount,
@@ -109,22 +121,28 @@ import {
   Ref,
   ref,
   useContext,
-  watch,
 } from "@nuxtjs/composition-api"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
 import { map } from "rxjs/operators"
 import { Subscription } from "rxjs"
 import isEqual from "lodash/isEqual"
+import {
+  HoppRESTRequest,
+  HoppRESTAuthOAuth2,
+  safelyExtractRESTRequest,
+} from "@hoppscotch/data"
 import { useSetting } from "~/newstore/settings"
 import {
-  restRequest$,
   restActiveParamsCount$,
   restActiveHeadersCount$,
   getRESTRequest,
   setRESTRequest,
   setRESTAuth,
   restAuth$,
+  useTestScript,
+  usePreRequestScript,
+  getDefaultRESTRequest,
 } from "~/newstore/RESTSession"
 import { translateExtURLParams } from "~/helpers/RESTExtURLParams"
 import {
@@ -134,76 +152,23 @@ import {
 } from "~/helpers/utils/composables"
 import { loadRequestFromSync, startRequestSync } from "~/helpers/fb/request"
 import { onLoggedIn } from "~/helpers/fb/auth"
-import {
-  FormDataKeyValue,
-  HoppRESTRequest,
-} from "~/helpers/types/HoppRESTRequest"
 import { oauthRedirect } from "~/helpers/oauth"
-import { HoppRESTAuthOAuth2 } from "~/helpers/types/HoppRESTAuth"
 import useWindowSize from "~/helpers/utils/useWindowSize"
 
 function bindRequestToURLParams() {
-  const {
-    route,
-    app: { router },
-  } = useContext()
-
-  const request = useStream(restRequest$, getRESTRequest(), setRESTRequest)
-
-  // Process headers and params to proper values
-  const headers = computed(() => {
-    const filtered = request.value.headers.filter((x) => x.key !== "")
-
-    return filtered.length > 0 ? JSON.stringify(filtered) : null
-  })
-
-  const params = computed(() => {
-    const filtered = request.value.params.filter((x) => x.key !== "")
-    return filtered.length > 0 ? JSON.stringify(filtered) : null
-  })
-
-  const body = computed(() => {
-    const contentType = request.value.body.contentType
-    if (contentType === "multipart/form-data") {
-      const body = request.value.body.body as FormDataKeyValue[]
-      const filtered = body.filter((x) => x.key !== "")
-      return JSON.stringify({ body: filtered, contentType })
-    }
-    return JSON.stringify({ body: request.value.body.body, contentType })
-  })
-
-  // Combine them together to a cleaner value
-  const urlParams = computed(() => ({
-    v: request.value.v,
-    method: request.value.method,
-    endpoint: request.value.endpoint,
-    headers: headers.value,
-    params: params.value,
-    body: body.value,
-  }))
-
-  // Watch and update accordingly
-  watch(urlParams, () => {
-    history.replaceState(
-      window.location.href,
-      "",
-      `${router!.options.base}?${encodeURI(
-        Object.entries(urlParams.value)
-          .filter((x) => x[1] !== null)
-          .map((x) => `${x[0]}=${x[1]!}`)
-          .join("&")
-      )}`
-    )
-  })
-
-  // Now, we have to see the initial URL param and set that as the request
+  const { route } = useContext()
+  // Get URL parameters and set that as the request
   onMounted(() => {
     const query = route.value.query
-
     // If query params are empty, or contains code or error param (these are from Oauth Redirect)
     // We skip URL params parsing
     if (Object.keys(query).length === 0 || query.code || query.error) return
-    setRESTRequest(translateExtURLParams(query))
+    setRESTRequest(
+      safelyExtractRESTRequest(
+        translateExtURLParams(query),
+        getDefaultRESTRequest()
+      )
+    )
   })
 }
 
@@ -265,10 +230,15 @@ export default defineComponent({
   setup() {
     const requestForSync = ref<HoppRESTRequest | null>(null)
 
+    const testScript = useTestScript()
+    const preRequestScript = usePreRequestScript()
+
     const confirmSync = ref(false)
 
     const syncRequest = () => {
-      setRESTRequest(requestForSync.value!)
+      setRESTRequest(
+        safelyExtractRESTRequest(requestForSync.value!, getDefaultRESTRequest())
+      )
     }
 
     setupRequestSync(confirmSync, requestForSync)
@@ -301,6 +271,8 @@ export default defineComponent({
       syncRequest,
       oAuthURL,
       requestForSync,
+      testScript,
+      preRequestScript,
     }
   },
 })

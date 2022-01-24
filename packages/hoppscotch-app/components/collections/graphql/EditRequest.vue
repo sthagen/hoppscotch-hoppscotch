@@ -38,7 +38,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "@nuxtjs/composition-api"
-import { HoppGQLRequest } from "~/helpers/types/HoppGQLRequest"
+import { HoppGQLRequest } from "@hoppscotch/data"
 import { editGraphqlRequest } from "~/newstore/collections"
 
 export default defineComponent({
@@ -47,6 +47,7 @@ export default defineComponent({
     folderPath: { type: String, default: null },
     request: { type: Object as PropType<HoppGQLRequest>, default: () => {} },
     requestIndex: { type: Number, default: null },
+    editingRequestName: { type: String, default: null },
   },
   data() {
     return {
@@ -55,12 +56,15 @@ export default defineComponent({
       },
     }
   },
+  watch: {
+    editingRequestName(val) {
+      this.requestUpdateData.name = val
+    },
+  },
   methods: {
     saveRequest() {
       if (!this.requestUpdateData.name) {
-        this.$toast.error(`${this.$t("collection.invalid_name")}`, {
-          icon: "error_outline",
-        })
+        this.$toast.error(`${this.$t("collection.invalid_name")}`)
         return
       }
       const requestUpdated = {

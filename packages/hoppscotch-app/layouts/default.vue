@@ -24,7 +24,7 @@
             >
               <Pane class="flex flex-1 hide-scrollbar !overflow-auto">
                 <main class="flex flex-1 w-full">
-                  <nuxt class="flex flex-1" style="overflow-y: overlay" />
+                  <nuxt class="flex flex-1" />
                 </main>
               </Pane>
             </Splitpanes>
@@ -52,11 +52,13 @@ import { setupLocalPersistence } from "~/newstore/localpersistence"
 import { performMigrations } from "~/helpers/migrations"
 import { initUserInfo } from "~/helpers/teams/BackendUserInfo"
 import { registerApolloAuthUpdate } from "~/helpers/apollo"
-import { useSetting } from "~/newstore/settings"
+import { applySetting, useSetting } from "~/newstore/settings"
 import { logPageView } from "~/helpers/fb/analytics"
 import { hookKeybindingsListener } from "~/helpers/keybindings"
 import { defineActionHandler } from "~/helpers/actions"
 import useWindowSize from "~/helpers/utils/useWindowSize"
+import { useSentry } from "~/helpers/sentry"
+import { useColorMode } from "~/helpers/utils/composables"
 
 function appLayout() {
   const rightSidebar = useSetting("SIDEBAR")
@@ -80,8 +82,25 @@ function appLayout() {
   })
 }
 
+function setupSentry() {
+  const sentry = useSentry()
+  const telemetryEnabled = useSetting("TELEMETRY_ENABLED")
+
+  // Disable sentry error reporting if no telemetry allowed
+  watch(
+    telemetryEnabled,
+    () => {
+      const client = sentry.getCurrentHub()?.getClient()
+      if (!client) return
+
+      client.getOptions().enabled = telemetryEnabled.value
+    },
+    { immediate: true }
+  )
+}
+
 function updateThemes() {
-  const { $colorMode } = useContext() as any
+  const $colorMode = useColorMode()
 
   // Apply theme updates
   const themeColor = useSetting("THEME_COLOR")
@@ -124,6 +143,21 @@ function defineJumpActions() {
   defineActionHandler("navigation.jump.settings", () => {
     router.push({ path: localePath("/settings") })
   })
+  defineActionHandler("navigation.jump.profile", () => {
+    router.push({ path: localePath("/profile") })
+  })
+  defineActionHandler("settings.theme.system", () => {
+    applySetting("BG_COLOR", "system")
+  })
+  defineActionHandler("settings.theme.light", () => {
+    applySetting("BG_COLOR", "light")
+  })
+  defineActionHandler("settings.theme.dark", () => {
+    applySetting("BG_COLOR", "dark")
+  })
+  defineActionHandler("settings.theme.black", () => {
+    applySetting("BG_COLOR", "black")
+  })
 }
 
 export default defineComponent({
@@ -137,6 +171,7 @@ export default defineComponent({
 
     updateThemes()
 
+    setupSentry()
     return {
       windowInnerWidth: useWindowSize(),
       ZEN_MODE: useSetting("ZEN_MODE"),
@@ -157,11 +192,11 @@ export default defineComponent({
   },
   async mounted() {
     performMigrations()
-    console.log(
+    console.info(
       "%cWe ❤︎ open source!",
       "background-color:white;padding:8px 16px;border-radius:8px;font-size:32px;color:red;"
     )
-    console.log(
+    console.info(
       "%cContribute: https://github.com/hoppscotch/hoppscotch",
       "background-color:black;padding:4px 8px;border-radius:8px;font-size:16px;color:white;"
     )
@@ -171,12 +206,16 @@ export default defineComponent({
       workbox.addEventListener("installed", (event: any) => {
         if (event.isUpdate) {
           this.$toast.show(`${this.$t("app.new_version_found")}`, {
-            icon: "download_for_offline",
             duration: 0,
             action: [
               {
+                text: `${this.$t("action.dismiss")}`,
+                onClick: (_, toastObject) => {
+                  toastObject.goAway(0)
+                },
+              },
+              {
                 text: `${this.$t("app.reload")}`,
-                class: "!ml-auto",
                 onClick: (_, toastObject) => {
                   toastObject.goAway(0)
                   window.location.reload()

@@ -1,9 +1,11 @@
 <template>
-  <div class="flex">
+  <div class="flex" @click="$refs.logout.$el.click()">
     <SmartItem
+      ref="logout"
       svg="log-out"
       :label="`${$t('auth.logout')}`"
       :outline="outline"
+      :shortcut="shortcut"
       @click.native="
         () => {
           $emit('confirm-logout')
@@ -30,6 +32,10 @@ export default defineComponent({
       type: Boolean,
       default: false,
     },
+    shortcut: {
+      type: Array,
+      default: () => [],
+    },
   },
   data() {
     return {
@@ -40,14 +46,10 @@ export default defineComponent({
     async logout() {
       try {
         await signOutUser()
-        this.$toast.success(`${this.$t("auth.logged_out")}`, {
-          icon: "vpn_key",
-        })
+        this.$toast.success(`${this.$t("auth.logged_out")}`)
       } catch (e) {
         console.error(e)
-        this.$toast.error(`${this.$t("error.something_went_wrong")}`, {
-          icon: "error_outline",
-        })
+        this.$toast.error(`${this.$t("error.something_went_wrong")}`)
       }
     },
   },

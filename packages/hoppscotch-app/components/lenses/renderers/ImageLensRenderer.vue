@@ -1,17 +1,7 @@
 <template>
   <div>
     <div
-      class="
-        bg-primary
-        border-b border-dividerLight
-        flex flex-1
-        top-lowerSecondaryStickyFold
-        pl-4
-        z-10
-        sticky
-        items-center
-        justify-between
-      "
+      class="sticky z-10 flex items-center justify-between pl-4 border-b bg-primary border-dividerLight top-lowerSecondaryStickyFold"
     >
       <label class="font-semibold text-secondaryLight">
         {{ $t("response.body") }}
@@ -28,8 +18,10 @@
       </div>
     </div>
     <img
-      class="border-b border-dividerLight flex max-w-full flex-1"
+      class="flex flex-1 max-w-full border-b border-dividerLight"
       :src="imageSource"
+      loading="lazy"
+      :alt="imageSource"
     />
   </div>
 </template>
@@ -101,9 +93,7 @@ export default defineComponent({
       document.body.appendChild(a)
       a.click()
       this.downloadIcon = "check"
-      this.$toast.success(this.$t("state.download_started"), {
-        icon: "downloading",
-      })
+      this.$toast.success(this.$t("state.download_started"))
       setTimeout(() => {
         document.body.removeChild(a)
         URL.revokeObjectURL(url)

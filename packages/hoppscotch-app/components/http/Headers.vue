@@ -1,45 +1,35 @@
 <template>
-  <AppSection label="headers">
+  <div>
     <div
-      class="
-        bg-primary
-        border-b border-dividerLight
-        flex flex-1
-        top-upperSecondaryStickyFold
-        pl-4
-        z-10
-        sticky
-        items-center
-        justify-between
-      "
+      class="sticky z-10 flex items-center justify-between flex-1 pl-4 border-b bg-primary border-dividerLight top-upperSecondaryStickyFold"
     >
       <label class="font-semibold text-secondaryLight">
-        {{ $t("request.header_list") }}
+        {{ t("request.header_list") }}
       </label>
       <div class="flex">
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
           to="https://docs.hoppscotch.io/features/headers"
           blank
-          :title="$t('app.wiki')"
+          :title="t('app.wiki')"
           svg="help-circle"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('action.clear_all')"
+          :title="t('action.clear_all')"
           svg="trash-2"
-          @click.native="bulkMode ? clearBulkEditor() : clearContent()"
+          @click.native="clearContent()"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('state.bulk_mode')"
+          :title="t('state.bulk_mode')"
           svg="edit"
           :class="{ '!text-accent': bulkMode }"
           @click.native="bulkMode = !bulkMode"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('add.new')"
+          :title="t('add.new')"
           svg="plus"
           :disabled="bulkMode"
           @click.native="addHeader"
@@ -49,12 +39,12 @@
     <div v-if="bulkMode" ref="bulkEditor"></div>
     <div v-else>
       <div
-        v-for="(header, index) in headers$"
+        v-for="(header, index) in workingHeaders"
         :key="`header-${index}`"
-        class="divide-x divide-dividerLight border-b border-dividerLight flex"
+        class="flex border-b divide-x divide-dividerLight border-dividerLight"
       >
         <SmartAutoComplete
-          :placeholder="`${$t('count.header', { count: index + 1 })}`"
+          :placeholder="`${t('count.header', { count: index + 1 })}`"
           :source="commonHeaders"
           :spellcheck="false"
           :value="header.key"
@@ -67,7 +57,7 @@
             px-4
             truncate
           "
-          class="!flex flex-1"
+          class="flex-1 !flex"
           @input="
             updateHeader(index, {
               key: $event,
@@ -78,7 +68,7 @@
         />
         <SmartEnvInput
           v-model="header.value"
-          :placeholder="`${$t('count.value', { count: index + 1 })}`"
+          :placeholder="`${t('count.value', { count: index + 1 })}`"
           styles="
             bg-transparent
             flex
@@ -100,9 +90,9 @@
             :title="
               header.hasOwnProperty('active')
                 ? header.active
-                  ? $t('action.turn_off')
-                  : $t('action.turn_on')
-                : $t('action.turn_off')
+                  ? t('action.turn_off')
+                  : t('action.turn_on')
+                : t('action.turn_off')
             "
             :svg="
               header.hasOwnProperty('active')
@@ -116,9 +106,7 @@
               updateHeader(index, {
                 key: header.key,
                 value: header.value,
-                active: header.hasOwnProperty('active')
-                  ? !header.active
-                  : false,
+                active: !header.active,
               })
             "
           />
@@ -126,7 +114,7 @@
         <span>
           <ButtonSecondary
             v-tippy="{ theme: 'tooltip' }"
-            :title="$t('action.remove')"
+            :title="t('action.remove')"
             svg="trash"
             color="red"
             @click.native="deleteHeader(index)"
@@ -134,65 +122,48 @@
         </span>
       </div>
       <div
-        v-if="headers$.length === 0"
-        class="
-          flex flex-col
-          text-secondaryLight
-          p-4
-          items-center
-          justify-center
-        "
+        v-if="workingHeaders.length === 0"
+        class="flex flex-col text-secondaryLight p-4 items-center justify-center"
       >
         <img
           :src="`/images/states/${$colorMode.value}/add_category.svg`"
           loading="lazy"
-          class="
-            flex-col
-            my-4
-            object-contain object-center
-            h-16
-            w-16
-            inline-flex
-          "
+          class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+          :alt="`${t('empty.headers')}`"
         />
-        <span class="text-center pb-4">
-          {{ $t("empty.headers") }}
+        <span class="pb-4 text-center">
+          {{ t("empty.headers") }}
         </span>
         <ButtonSecondary
           filled
-          :label="`${$t('add.new')}`"
+          :label="`${t('add.new')}`"
           svg="plus"
+          class="mb-4"
           @click.native="addHeader"
         />
       </div>
     </div>
-  </AppSection>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, useContext, watch, onMounted } from "@nuxtjs/composition-api"
+import { Ref, ref, watch } from "@nuxtjs/composition-api"
+import isEqual from "lodash/isEqual"
+import clone from "lodash/clone"
+import { HoppRESTHeader } from "@hoppscotch/data"
 import { useCodemirror } from "~/helpers/editor/codemirror"
-import {
-  addRESTHeader,
-  deleteAllRESTHeaders,
-  deleteRESTHeader,
-  restHeaders$,
-  setRESTHeaders,
-  updateRESTHeader,
-} from "~/newstore/RESTSession"
+import { restHeaders$, setRESTHeaders } from "~/newstore/RESTSession"
 import { commonHeaders } from "~/helpers/headers"
-import { useReadonlyStream } from "~/helpers/utils/composables"
-import { HoppRESTHeader } from "~/helpers/types/HoppRESTRequest"
+import { useI18n, useStream, useToast } from "~/helpers/utils/composables"
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
+const toast = useToast()
 
 const bulkMode = ref(false)
 const bulkHeaders = ref("")
 const bulkEditor = ref<any | null>(null)
+
+const deletionToast = ref<{ goAway: (delay: number) => void } | null>(null)
 
 useCodemirror(bulkEditor, bulkHeaders, {
   extendedEditorConfig: {
@@ -201,66 +172,168 @@ useCodemirror(bulkEditor, bulkHeaders, {
   },
   linter: null,
   completer: null,
+  environmentHighlights: true,
 })
 
+// The functional headers list (the headers actually in the system)
+const headers = useStream(restHeaders$, [], setRESTHeaders) as Ref<
+  HoppRESTHeader[]
+>
+
+// The UI representation of the headers list (has the empty end header)
+const workingHeaders = ref<HoppRESTHeader[]>([
+  {
+    key: "",
+    value: "",
+    active: true,
+  },
+])
+
+// Rule: Working Headers always have one empty header or the last element is always an empty header
+watch(workingHeaders, (headersList) => {
+  if (
+    headersList.length > 0 &&
+    headersList[headersList.length - 1].key !== ""
+  ) {
+    workingHeaders.value.push({
+      key: "",
+      value: "",
+      active: true,
+    })
+  }
+})
+
+// Sync logic between headers and working headers
+watch(
+  headers,
+  (newHeadersList) => {
+    // Sync should overwrite working headers
+    const filteredWorkingHeaders = workingHeaders.value.filter(
+      (e) => e.key !== ""
+    )
+
+    if (!isEqual(newHeadersList, filteredWorkingHeaders)) {
+      workingHeaders.value = newHeadersList
+    }
+  },
+  { immediate: true }
+)
+
+watch(workingHeaders, (newWorkingHeaders) => {
+  const fixedHeaders = newWorkingHeaders.filter((e) => e.key !== "")
+  if (!isEqual(headers.value, fixedHeaders)) {
+    headers.value = fixedHeaders
+  }
+})
+
+// Bulk Editor Syncing with Working Headers
 watch(bulkHeaders, () => {
   try {
-    const transformation = bulkHeaders.value.split("\n").map((item) => ({
-      key: item.substring(0, item.indexOf(":")).trim().replace(/^\/\//, ""),
-      value: item.substring(item.indexOf(":") + 1).trim(),
-      active: !item.trim().startsWith("//"),
-    }))
-    setRESTHeaders(transformation)
+    const transformation = bulkHeaders.value
+      .split("\n")
+      .filter((x) => x.trim().length > 0 && x.includes(":"))
+      .map((item) => ({
+        key: item.substring(0, item.indexOf(":")).trimLeft().replace(/^#/, ""),
+        value: item.substring(item.indexOf(":") + 1).trimLeft(),
+        active: !item.trim().startsWith("#"),
+      }))
+
+    const filteredHeaders = workingHeaders.value.filter((x) => x.key !== "")
+
+    if (!isEqual(filteredHeaders, transformation)) {
+      workingHeaders.value = transformation
+    }
   } catch (e) {
-    $toast.error(`${t("error.something_went_wrong")}`, {
-      icon: "error_outline",
-    })
+    toast.error(`${t("error.something_went_wrong")}`)
     console.error(e)
   }
 })
 
-const headers$ = useReadonlyStream(restHeaders$, [])
+watch(workingHeaders, (newHeadersList) => {
+  // If we are in bulk mode, don't apply direct changes
+  if (bulkMode.value) return
 
-onMounted(() => editBulkHeadersLine(-1, null))
+  try {
+    const currentBulkHeaders = bulkHeaders.value.split("\n").map((item) => ({
+      key: item.substring(0, item.indexOf(":")).trimLeft().replace(/^#/, ""),
+      value: item.substring(item.indexOf(":") + 1).trimLeft(),
+      active: !item.trim().startsWith("#"),
+    }))
 
-const editBulkHeadersLine = (index: number, item?: HoppRESTParam) => {
-  const headers = headers$.value
+    const filteredHeaders = newHeadersList.filter((x) => x.key !== "")
 
-  bulkHeaders.value = headers
-    .reduce((all, header, pIndex) => {
-      const current =
-        index === pIndex && item !== null
-          ? `${item.active ? "" : "//"}${item.key}: ${item.value}`
-          : `${header.active ? "" : "//"}${header.key}: ${header.value}`
-      return [...all, current]
-    }, [])
-    .join("\n")
-}
-
-const clearBulkEditor = () => {
-  bulkHeaders.value = ""
-}
+    if (!isEqual(currentBulkHeaders, filteredHeaders)) {
+      bulkHeaders.value = filteredHeaders
+        .map((header) => {
+          return `${header.active ? "" : "#"}${header.key}: ${header.value}`
+        })
+        .join("\n")
+    }
+  } catch (e) {
+    toast.error(`${t("error.something_went_wrong")}`)
+    console.error(e)
+  }
+})
 
 const addHeader = () => {
-  const empty = { key: "", value: "", active: true }
-  const index = headers$.value.length
-
-  addRESTHeader(empty)
-  editBulkHeadersLine(index, empty)
+  workingHeaders.value.push({
+    key: "",
+    value: "",
+    active: true,
+  })
 }
 
-const updateHeader = (index: number, item: HoppRESTHeader) => {
-  updateRESTHeader(index, item)
-  editBulkHeadersLine(index, item)
+const updateHeader = (index: number, header: HoppRESTHeader) => {
+  workingHeaders.value = workingHeaders.value.map((h, i) =>
+    i === index ? header : h
+  )
 }
 
 const deleteHeader = (index: number) => {
-  deleteRESTHeader(index)
-  editBulkHeadersLine(index, null)
+  const headersBeforeDeletion = clone(workingHeaders.value)
+
+  if (
+    !(
+      headersBeforeDeletion.length > 0 &&
+      index === headersBeforeDeletion.length - 1
+    )
+  ) {
+    if (deletionToast.value) {
+      deletionToast.value.goAway(0)
+      deletionToast.value = null
+    }
+
+    deletionToast.value = toast.success(`${t("state.deleted")}`, {
+      action: [
+        {
+          text: `${t("action.undo")}`,
+          onClick: (_, toastObject) => {
+            workingHeaders.value = headersBeforeDeletion
+            toastObject.goAway(0)
+            deletionToast.value = null
+          },
+        },
+      ],
+
+      onComplete: () => {
+        deletionToast.value = null
+      },
+    })
+  }
+
+  workingHeaders.value.splice(index, 1)
 }
 
 const clearContent = () => {
-  deleteAllRESTHeaders()
-  clearBulkEditor()
+  // set headers list to the initial state
+  workingHeaders.value = [
+    {
+      key: "",
+      value: "",
+      active: true,
+    },
+  ]
+
+  bulkHeaders.value = ""
 }
 </script>

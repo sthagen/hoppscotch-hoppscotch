@@ -1,39 +1,29 @@
 <template>
   <div>
     <div
-      class="
-        bg-primary
-        border-b border-dividerLight
-        flex flex-1
-        top-upperTertiaryStickyFold
-        pl-4
-        z-10
-        sticky
-        items-center
-        justify-between
-      "
+      class="sticky z-10 flex items-center justify-between flex-1 pl-4 border-b bg-primary border-dividerLight top-upperTertiaryStickyFold"
     >
       <label class="font-semibold text-secondaryLight">
-        {{ $t("request.raw_body") }}
+        {{ t("request.raw_body") }}
       </label>
       <div class="flex">
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
           to="https://docs.hoppscotch.io/features/body"
           blank
-          :title="$t('app.wiki')"
+          :title="t('app.wiki')"
           svg="help-circle"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('state.linewrap')"
+          :title="t('state.linewrap')"
           :class="{ '!text-accent': linewrapEnabled }"
-          svg="corner-down-left"
+          svg="wrap-text"
           @click.native.prevent="linewrapEnabled = !linewrapEnabled"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('action.clear')"
+          :title="t('action.clear')"
           svg="trash-2"
           @click.native="clearContent"
         />
@@ -41,14 +31,14 @@
           v-if="contentType && contentType.endsWith('json')"
           ref="prettifyRequest"
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('action.prettify')"
+          :title="t('action.prettify')"
           :svg="prettifyIcon"
           @click.native="prettifyRequestBody"
         />
         <label for="payload">
           <ButtonSecondary
             v-tippy="{ theme: 'tooltip' }"
-            :title="$t('import.json')"
+            :title="t('import.title')"
             svg="file-plus"
             @click.native="$refs.payload.click()"
           />
@@ -67,33 +57,57 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, useContext } from "@nuxtjs/composition-api"
+import {
+  computed,
+  reactive,
+  Ref,
+  ref,
+  watchEffect,
+} from "@nuxtjs/composition-api"
+import * as TO from "fp-ts/TaskOption"
+import { pipe } from "fp-ts/function"
+import { HoppRESTReqBody, ValidContentTypes } from "~/../hoppscotch-data/dist"
 import { useCodemirror } from "~/helpers/editor/codemirror"
 import { getEditorLangForMimeType } from "~/helpers/editorutils"
-import { pluckRef } from "~/helpers/utils/composables"
+import { pluckRef, useI18n, useToast } from "~/helpers/utils/composables"
+import { isJSONContentType } from "~/helpers/utils/contenttypes"
 import { useRESTRequestBody } from "~/newstore/RESTSession"
-import "codemirror/mode/yaml/yaml"
-import "codemirror/mode/xml/xml"
-import "codemirror/mode/css/css"
-import "codemirror/mode/htmlmixed/htmlmixed"
-import "codemirror/mode/javascript/javascript"
+
+import jsonLinter from "~/helpers/editor/linting/json"
+import { readFileAsText } from "~/helpers/functional/files"
+
+type PossibleContentTypes = Exclude<
+  ValidContentTypes,
+  "multipart/form-data" | "application/x-www-form-urlencoded"
+>
+
+const t = useI18n()
 
 const props = defineProps<{
-  contentType: string
+  contentType: PossibleContentTypes
 }>()
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const toast = useToast()
 
-const rawParamsBody = pluckRef(useRESTRequestBody(), "body")
-const prettifyIcon = ref("align-left")
+const rawParamsBody = pluckRef(
+  useRESTRequestBody() as Ref<
+    HoppRESTReqBody & {
+      contentType: PossibleContentTypes
+    }
+  >,
+  "body"
+)
+const prettifyIcon = ref("wand")
 
 const rawInputEditorLang = computed(() =>
   getEditorLangForMimeType(props.contentType)
 )
+const langLinter = computed(() =>
+  isJSONContentType(props.contentType) ? jsonLinter : null
+)
+
+watchEffect(() => console.log(rawInputEditorLang.value))
+
 const linewrapEnabled = ref(true)
 const rawBodyParameters = ref<any | null>(null)
 
@@ -104,10 +118,11 @@ useCodemirror(
     extendedEditorConfig: {
       lineWrapping: linewrapEnabled,
       mode: rawInputEditorLang,
-      placeholder: t("request.raw_body"),
+      placeholder: t("request.raw_body").toString(),
     },
-    linter: null,
+    linter: langLinter,
     completer: null,
+    environmentHighlights: true,
   })
 )
 
@@ -115,34 +130,32 @@ const clearContent = () => {
   rawParamsBody.value = ""
 }
 
-const uploadPayload = (e: InputEvent) => {
-  const file = e.target.files[0]
-  if (file !== undefined && file !== null) {
-    const reader = new FileReader()
-    reader.onload = ({ target }) => {
-      rawParamsBody.value = target?.result
-    }
-    reader.readAsText(file)
-    $toast.success(`${t("state.file_imported")}`, {
-      icon: "attach_file",
-    })
-  } else {
-    $toast.error(`${t("action.choose_file")}`, {
-      icon: "attach_file",
-    })
-  }
+const uploadPayload = async (e: InputEvent) => {
+  await pipe(
+    (e.target as HTMLInputElement).files?.[0],
+    TO.of,
+    TO.chain(TO.fromPredicate((f): f is File => f !== undefined)),
+    TO.chain(readFileAsText),
+
+    TO.matchW(
+      () => toast.error(`${t("action.choose_file")}`),
+      (result) => {
+        rawParamsBody.value = result
+        toast.success(`${t("state.file_imported")}`)
+      }
+    )
+  )()
 }
 const prettifyRequestBody = () => {
   try {
     const jsonObj = JSON.parse(rawParamsBody.value)
     rawParamsBody.value = JSON.stringify(jsonObj, null, 2)
     prettifyIcon.value = "check"
-    setTimeout(() => (prettifyIcon.value = "align-left"), 1000)
   } catch (e) {
     console.error(e)
-    $toast.error(`${t("error.json_prettify_invalid_body")}`, {
-      icon: "error_outline",
-    })
+    prettifyIcon.value = "info"
+    toast.error(`${t("error.json_prettify_invalid_body")}`)
   }
+  setTimeout(() => (prettifyIcon.value = "wand"), 1000)
 }
 </script>

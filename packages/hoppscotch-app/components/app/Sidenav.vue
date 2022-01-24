@@ -1,6 +1,6 @@
 <template>
-  <aside class="flex h-full justify-between md:flex-col">
-    <nav class="flex flex-nowrap md:flex-col flex-1 md:flex-none">
+  <aside class="flex justify-between h-full md:flex-col">
+    <nav class="flex flex-1 flex-nowrap md:flex-col md:flex-none">
       <NuxtLink
         v-for="(navigation, index) in primaryNavigation"
         :key="`navigation-${index}`"
@@ -8,9 +8,6 @@
         class="nav-link"
         tabindex="0"
       >
-        <i v-if="navigation.icon" class="material-icons">
-          {{ navigation.icon }}
-        </i>
         <div v-if="navigation.svg">
           <SmartIcon :name="navigation.svg" class="svg-icons" />
         </div>
@@ -26,50 +23,43 @@
   </aside>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "@nuxtjs/composition-api"
+<script setup lang="ts">
 import useWindowSize from "~/helpers/utils/useWindowSize"
 import { useSetting } from "~/newstore/settings"
+import { useI18n } from "~/helpers/utils/composables"
 
-export default defineComponent({
-  setup() {
-    return {
-      windowInnerWidth: useWindowSize(),
-      EXPAND_NAVIGATION: useSetting("EXPAND_NAVIGATION"),
-    }
+const t = useI18n()
+
+const windowInnerWidth = useWindowSize()
+const EXPAND_NAVIGATION = useSetting("EXPAND_NAVIGATION")
+
+const primaryNavigation = [
+  {
+    target: "index",
+    svg: "link-2",
+    title: t("navigation.rest"),
   },
-  data() {
-    return {
-      primaryNavigation: [
-        {
-          target: "index",
-          svg: "link-2",
-          title: this.$t("navigation.rest"),
-        },
-        {
-          target: "graphql",
-          svg: "graphql",
-          title: this.$t("navigation.graphql"),
-        },
-        {
-          target: "realtime",
-          svg: "globe",
-          title: this.$t("navigation.realtime"),
-        },
-        {
-          target: "documentation",
-          svg: "book-open",
-          title: this.$t("navigation.doc"),
-        },
-        {
-          target: "settings",
-          svg: "settings",
-          title: this.$t("navigation.settings"),
-        },
-      ],
-    }
+  {
+    target: "graphql",
+    svg: "graphql",
+    title: t("navigation.graphql"),
   },
-})
+  {
+    target: "realtime",
+    svg: "globe",
+    title: t("navigation.realtime"),
+  },
+  {
+    target: "documentation",
+    svg: "book-open",
+    title: t("navigation.doc"),
+  },
+  {
+    target: "settings",
+    svg: "settings",
+    title: t("navigation.settings"),
+  },
+]
 </script>
 
 <style scoped lang="scss">
@@ -110,9 +100,7 @@ export default defineComponent({
 
   span {
     @apply mt-2;
-    @apply font-font-medium;
-
-    font-size: calc(var(--body-font-size) - 0.062rem);
+    @apply text-tiny;
   }
 
   &.exact-active-link {

@@ -1,5 +1,5 @@
 <template>
-  <AppSection :label="`${$t('test.results')}`">
+  <div>
     <div
       v-if="
         testResults &&
@@ -7,30 +7,20 @@
       "
     >
       <div
-        class="
-          bg-primary
-          border-dividerLight border-b
-          flex flex-1
-          top-lowerSecondaryStickyFold
-          pl-4
-          z-10
-          sticky
-          items-center
-          justify-between
-        "
+        class="sticky z-10 flex items-center justify-between pl-4 border-b bg-primary border-dividerLight top-lowerSecondaryStickyFold"
       >
         <label class="font-semibold text-secondaryLight">
-          {{ $t("test.report") }}
+          {{ t("test.report") }}
         </label>
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('action.clear')"
+          :title="t('action.clear')"
           svg="trash-2"
           @click.native="clearContent()"
         />
       </div>
-      <div class="divide-dividerLight border-dividerLight border-b divide-y-4">
-        <div v-if="testResults.tests" class="divide-dividerLight divide-y-4">
+      <div class="border-b divide-y-4 divide-dividerLight border-dividerLight">
+        <div v-if="testResults.tests" class="divide-y-4 divide-dividerLight">
           <HttpTestResultEntry
             v-for="(result, index) in testResults.tests"
             :key="`result-${index}`"
@@ -39,7 +29,7 @@
         </div>
         <div
           v-if="testResults.expectResults"
-          class="divide-dividerLight divide-y"
+          class="divide-y divide-dividerLight"
         >
           <HttpTestResultReport
             v-if="testResults.expectResults.length"
@@ -48,7 +38,7 @@
           <div
             v-for="(result, index) in testResults.expectResults"
             :key="`result-${index}`"
-            class="flex py-2 px-4 items-center"
+            class="flex items-center px-4 py-2"
           >
             <i
               class="mr-4 material-icons"
@@ -64,9 +54,7 @@
             <span class="text-secondaryLight">
               {{
                 ` \xA0 — \xA0 ${
-                  result.status === "pass"
-                    ? $t("test.passed")
-                    : $t("test.failed")
+                  result.status === "pass" ? t("test.passed") : t("test.failed")
                 }`
               }}
             </span>
@@ -76,34 +64,38 @@
     </div>
     <div
       v-else
-      class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+      class="flex flex-col items-center justify-center p-4 text-secondaryLight"
     >
       <img
         :src="`/images/states/${$colorMode.value}/validation.svg`"
         loading="lazy"
-        class="flex-col my-4 object-contain object-center h-16 w-16 inline-flex"
+        class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+        :alt="`${t('empty.tests')}`"
       />
-      <span class="text-center pb-2">
-        {{ $t("empty.tests") }}
+      <span class="pb-2 text-center">
+        {{ t("empty.tests") }}
       </span>
-      <span class="text-center pb-4">
-        {{ $t("helpers.tests") }}
+      <span class="pb-4 text-center">
+        {{ t("helpers.tests") }}
       </span>
       <ButtonSecondary
         outline
-        :label="`${$t('action.learn_more')}`"
-        to="https://docs.hoppscotch.io"
+        :label="`${t('action.learn_more')}`"
+        to="https://docs.hoppscotch.io/features/tests"
         blank
         svg="external-link"
         reverse
+        class="my-4"
       />
     </div>
-  </AppSection>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { useReadonlyStream } from "~/helpers/utils/composables"
+import { useReadonlyStream, useI18n } from "~/helpers/utils/composables"
 import { restTestResults$, setRESTTestResults } from "~/newstore/RESTSession"
+
+const t = useI18n()
 
 const testResults = useReadonlyStream(restTestResults$, null)
 

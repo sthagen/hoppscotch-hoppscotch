@@ -45,18 +45,22 @@ export default defineComponent({
     show: Boolean,
     editingCollection: { type: Object, default: () => {} },
     editingCollectionIndex: { type: Number, default: null },
+    editingCollectionName: { type: String, default: null },
   },
   data() {
     return {
       name: null as string | null,
     }
   },
+  watch: {
+    editingCollectionName(val) {
+      this.name = val
+    },
+  },
   methods: {
     saveCollection() {
       if (!this.name) {
-        this.$toast.error(`${this.$t("collection.invalid_name")}`, {
-          icon: "error_outline",
-        })
+        this.$toast.error(`${this.$t("collection.invalid_name")}`)
         return
       }
       const collectionUpdated = {

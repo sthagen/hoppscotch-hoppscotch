@@ -2,6 +2,7 @@
   --font-sans: "Inter", sans-serif;
   --font-mono: "Roboto Mono", monospace;
   --font-icon: "Material Icons";
+  --font-size-tiny: calc(var(--font-size-body) - 0.062rem);
 }
 
 @mixin dark-theme {
@@ -27,7 +28,7 @@
   --secondary-color: theme("colors.true-gray.500");
   --secondary-light-color: theme("colors.true-gray.400");
   --secondary-dark-color: theme("colors.true-gray.900");
-  --divider-color: theme("colors.true-gray.200");
+  --divider-color: theme("colors.gray.100");
   --divider-light-color: theme("colors.true-gray.100");
   --divider-dark-color: theme("colors.true-gray.300");
   --error-color: theme("colors.yellow.100");
@@ -44,12 +45,54 @@
   --secondary-light-color: theme("colors.true-gray.500");
   --secondary-dark-color: theme("colors.true-gray.100");
   --divider-color: theme("colors.true-gray.800");
-  --divider-light-color: theme("colors.dark.700");
+  --divider-light-color: theme("colors.dark.800");
   --divider-dark-color: theme("colors.dark.300");
   --error-color: theme("colors.warm-gray.900");
   --tooltip-color: theme("colors.true-gray.100");
-  --popover-color: theme("colors.dark.700");
+  --popover-color: theme("colors.dark.600");
   --editor-theme: "twilight";
+}
+
+@mixin dark-editor-theme {
+  --editor-type-color: theme("colors.purple.400");
+  --editor-name-color: theme("colors.blue.400");
+  --editor-operator-color: theme("colors.indigo.400");
+  --editor-invalid-color: theme("colors.red.400");
+  --editor-separator-color: theme("colors.gray.400");
+  --editor-meta-color: theme("colors.gray.400");
+  --editor-variable-color: theme("colors.green.400");
+  --editor-link-color: theme("colors.cyan.400");
+  --editor-process-color: theme("colors.fuchsia.400");
+  --editor-constant-color: theme("colors.violet.400");
+  --editor-keyword-color: theme("colors.pink.400");
+}
+
+@mixin light-editor-theme {
+  --editor-type-color: theme("colors.purple.600");
+  --editor-name-color: theme("colors.red.600");
+  --editor-operator-color: theme("colors.indigo.600");
+  --editor-invalid-color: theme("colors.red.600");
+  --editor-separator-color: theme("colors.gray.600");
+  --editor-meta-color: theme("colors.gray.600");
+  --editor-variable-color: theme("colors.green.600");
+  --editor-link-color: theme("colors.cyan.600");
+  --editor-process-color: theme("colors.blue.600");
+  --editor-constant-color: theme("colors.fuchsia.600");
+  --editor-keyword-color: theme("colors.pink.600");
+}
+
+@mixin black-editor-theme {
+  --editor-type-color: theme("colors.purple.400");
+  --editor-name-color: theme("colors.fuchsia.400");
+  --editor-operator-color: theme("colors.indigo.400");
+  --editor-invalid-color: theme("colors.red.400");
+  --editor-separator-color: theme("colors.gray.400");
+  --editor-meta-color: theme("colors.gray.400");
+  --editor-variable-color: theme("colors.green.400");
+  --editor-link-color: theme("colors.cyan.400");
+  --editor-process-color: theme("colors.violet.400");
+  --editor-constant-color: theme("colors.blue.400");
+  --editor-keyword-color: theme("colors.pink.400");
 }
 
 @mixin green-theme {
@@ -146,18 +189,22 @@
   @include base-theme;
   @include dark-theme;
   @include green-theme;
+  @include dark-editor-theme;
 }
 
 :root.light {
   @include light-theme;
+  @include light-editor-theme;
 }
 
 :root.dark {
   @include dark-theme;
+  @include dark-editor-theme;
 }
 
 :root.black {
   @include black-theme;
+  @include black-editor-theme;
 }
 
 :root[data-accent="blue"] {
@@ -197,8 +244,8 @@
 }
 
 @mixin font-small {
-  --body-font-size: 0.75rem;
-  --body-line-height: 1rem;
+  --font-size-body: 0.75rem;
+  --line-height-body: 1rem;
   --upper-primary-sticky-fold: 4.125rem;
   --upper-secondary-sticky-fold: 6.125rem;
   --upper-tertiary-sticky-fold: 8.188rem;
@@ -209,8 +256,8 @@
 }
 
 @mixin font-medium {
-  --body-font-size: 0.875rem;
-  --body-line-height: 1.25rem;
+  --font-size-body: 0.875rem;
+  --line-height-body: 1.25rem;
   --upper-primary-sticky-fold: 4.375rem;
   --upper-secondary-sticky-fold: 6.625rem;
   --upper-tertiary-sticky-fold: 8.813rem;
@@ -221,8 +268,8 @@
 }
 
 @mixin font-large {
-  --body-font-size: 1rem;
-  --body-line-height: 1.5rem;
+  --font-size-body: 1rem;
+  --line-height-body: 1.5rem;
   --upper-primary-sticky-fold: 4.625rem;
   --upper-secondary-sticky-fold: 7.125rem;
   --upper-tertiary-sticky-fold: 9.5rem;

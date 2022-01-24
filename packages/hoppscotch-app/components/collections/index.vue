@@ -1,27 +1,16 @@
 <template>
-  <AppSection
-    label="collections"
-    :class="{ 'rounded border border-divider': saveRequest }"
-  >
+  <div :class="{ 'rounded border border-divider': saveRequest }">
     <div
-      class="
-        divide-y divide-dividerLight
-        bg-primary
-        border-b border-dividerLight
-        rounded-t
-        flex flex-col
-        top-0
-        z-10
-        sticky
-      "
+      class="divide-dividerLight divide-y bg-primary border-b border-dividerLight rounded-t flex flex-col z-10 sticky"
+      :style="saveRequest ? 'top: calc(-1 * var(--font-size-body))' : 'top: 0'"
     >
-      <div v-if="!saveRequest" class="search-wrappe">
+      <div v-if="!saveRequest" class="flex flex-col">
         <input
           v-model="filterText"
           type="search"
           autocomplete="off"
           :placeholder="$t('action.search')"
-          class="bg-transparent flex w-full py-2 pr-2 pl-4"
+          class="bg-transparent py-2 pr-2 pl-4"
         />
       </div>
       <CollectionsChooseType
@@ -95,6 +84,7 @@
         @add-folder="addFolder($event)"
         @edit-folder="editFolder($event)"
         @edit-request="editRequest($event)"
+        @duplicate-request="duplicateRequest($event)"
         @update-team-collections="updateTeamCollections"
         @select-collection="$emit('use-collection', collection)"
         @unselect-collection="$emit('remove-collection', collection)"
@@ -111,7 +101,8 @@
       <img
         :src="`/images/states/${$colorMode.value}/pack.svg`"
         loading="lazy"
-        class="flex-col my-4 object-contain object-center h-16 w-16 inline-flex"
+        class="flex-col object-contain object-center h-16 my-4 w-16 inline-flex"
+        :alt="$t('empty.collections')"
       />
       <span class="text-center pb-4">
         {{ $t("empty.collections") }}
@@ -125,12 +116,14 @@
         v-tippy="{ theme: 'tooltip' }"
         :title="$t('team.no_access')"
         :label="$t('add.new')"
+        class="mb-4"
         filled
       />
       <ButtonSecondary
         v-else
         :label="$t('add.new')"
         filled
+        class="mb-4"
         @click.native="displayModalAdd(true)"
       />
     </div>
@@ -139,7 +132,7 @@
       class="flex flex-col text-secondaryLight p-4 items-center justify-center"
     >
       <i class="opacity-75 pb-2 material-icons">manage_search</i>
-      <span class="text-center">
+      <span class="my-2 text-center">
         {{ $t("state.nothing_found") }} "{{ filterText }}"
       </span>
     </div>
@@ -150,8 +143,11 @@
     />
     <CollectionsEdit
       :show="showModalEdit"
-      :editing-coll-name="editingCollection ? editingCollection.name : ''"
-      :placeholder-coll-name="editingCollection ? editingCollection.name : ''"
+      :editing-collection-name="
+        editingCollection
+          ? editingCollection.name || editingCollection.title
+          : ''
+      "
       @hide-modal="displayModalEdit(false)"
       @submit="updateEditingCollection"
     />
@@ -164,12 +160,15 @@
     />
     <CollectionsEditFolder
       :show="showModalEditFolder"
+      :editing-folder-name="
+        editingFolder ? editingFolder.name || editingFolder.title : ''
+      "
       @submit="updateEditingFolder"
       @hide-modal="displayModalEditFolder(false)"
     />
     <CollectionsEditRequest
       :show="showModalEditRequest"
-      :placeholder-req-name="editingRequest ? editingRequest.name : ''"
+      :editing-request-name="editingRequest ? editingRequest.name : ''"
       @submit="updateEditingRequest"
       @hide-modal="displayModalEditRequest(false)"
     />
@@ -179,7 +178,7 @@
       @hide-modal="displayModalImportExport(false)"
       @update-team-collections="updateTeamCollections"
     />
-  </AppSection>
+  </div>
 </template>
 
 <script>
@@ -200,6 +199,7 @@ import {
   editRESTFolder,
   removeRESTRequest,
   editRESTRequest,
+  saveRESTRequestAs,
 } from "~/newstore/collections"
 import {
   useReadonlyStream,
@@ -356,14 +356,10 @@ export default defineComponent({
             this.collectionsType.selectedTeam.id
           )
           .then(() => {
-            this.$toast.success(this.$t("collection.created"), {
-              icon: "done",
-            })
+            this.$toast.success(this.$t("collection.created"))
           })
           .catch((e) => {
-            this.$toast.error(this.$t("error.something_went_wrong"), {
-              icon: "error_outline",
-            })
+            this.$toast.error(this.$t("error.something_went_wrong"))
             console.error(e)
           })
       }
@@ -372,9 +368,7 @@ export default defineComponent({
     // Intented to be called by CollectionEdit modal submit event
     updateEditingCollection(newName) {
       if (!newName) {
-        this.$toast.error(this.$t("collection.invalid_name"), {
-          icon: "error_outline",
-        })
+        this.$toast.error(this.$t("collection.invalid_name"))
         return
       }
       if (this.collectionsType.type === "my-collections") {
@@ -391,14 +385,10 @@ export default defineComponent({
         teamUtils
           .renameCollection(this.$apollo, newName, this.editingCollection.id)
           .then(() => {
-            this.$toast.success(this.$t("collection.renamed"), {
-              icon: "done",
-            })
+            this.$toast.success(this.$t("collection.renamed"))
           })
           .catch((e) => {
-            this.$toast.error(this.$t("error.something_went_wrong"), {
-              icon: "error_outline",
-            })
+            this.$toast.error(this.$t("error.something_went_wrong"))
             console.error(e)
           })
       }
@@ -415,14 +405,10 @@ export default defineComponent({
         teamUtils
           .renameCollection(this.$apollo, name, this.editingFolder.id)
           .then(() => {
-            this.$toast.success(this.$t("folder.renamed"), {
-              icon: "done",
-            })
+            this.$toast.success(this.$t("folder.renamed"))
           })
           .catch((e) => {
-            this.$toast.error(this.$t("error.something_went_wrong"), {
-              icon: "error_outline",
-            })
+            this.$toast.error(this.$t("error.something_went_wrong"))
             console.error(e)
           })
       }
@@ -455,15 +441,11 @@ export default defineComponent({
             this.editingRequestIndex
           )
           .then(() => {
-            this.$toast.success(this.$t("request.renamed"), {
-              icon: "done",
-            })
+            this.$toast.success(this.$t("request.renamed"))
             this.$emit("update-team-collections")
           })
           .catch((e) => {
-            this.$toast.error(this.$t("error.something_went_wrong"), {
-              icon: "error_outline",
-            })
+            this.$toast.error(this.$t("error.something_went_wrong"))
             console.error(e)
           })
       }
@@ -528,15 +510,11 @@ export default defineComponent({
               },
             })
             .then(() => {
-              this.$toast.success(this.$t("folder.created"), {
-                icon: "done",
-              })
+              this.$toast.success(this.$t("folder.created"))
               this.$emit("update-team-collections")
             })
             .catch((e) => {
-              this.$toast.error(this.$t("error.something_went_wrong"), {
-                icon: "error_outline",
-              })
+              this.$toast.error(this.$t("error.something_went_wrong"))
               console.error(e)
             })
         }
@@ -600,9 +578,7 @@ export default defineComponent({
         }
 
         removeRESTCollection(collectionIndex)
-        this.$toast.success(this.$t("state.deleted"), {
-          icon: "delete",
-        })
+        this.$toast.success(this.$t("state.deleted"))
       } else if (collectionsType.type === "team-collections") {
         // Cancel pick if picked collection is deleted
         if (
@@ -628,14 +604,10 @@ export default defineComponent({
               },
             })
             .then(() => {
-              this.$toast.success(this.$t("state.deleted"), {
-                icon: "delete",
-              })
+              this.$toast.success(this.$t("state.deleted"))
             })
             .catch((e) => {
-              this.$toast.error(this.$t("error.something_went_wrong"), {
-                icon: "error_outline",
-              })
+              this.$toast.error(this.$t("error.something_went_wrong"))
               console.error(e)
             })
         }
@@ -653,9 +625,7 @@ export default defineComponent({
           this.$emit("select", { picked: null })
         }
         removeRESTRequest(folderPath, requestIndex)
-        this.$toast.success(this.$t("state.deleted"), {
-          icon: "delete",
-        })
+        this.$toast.success(this.$t("state.deleted"))
       } else if (this.collectionsType.type === "team-collections") {
         // Cancel pick if the picked item is being deleted
         if (
@@ -669,16 +639,33 @@ export default defineComponent({
         teamUtils
           .deleteRequest(this.$apollo, requestIndex)
           .then(() => {
-            this.$toast.success(this.$t("state.deleted"), {
-              icon: "delete",
-            })
+            this.$toast.success(this.$t("state.deleted"))
           })
           .catch((e) => {
-            this.$toast.error(this.$t("error.something_went_wrong"), {
-              icon: "error_outline",
-            })
+            this.$toast.error(this.$t("error.something_went_wrong"))
             console.error(e)
           })
+      }
+    },
+    duplicateRequest({ folderPath, request, collectionID }) {
+      if (this.collectionsType.type === "team-collections") {
+        const newReq = {
+          ...cloneDeep(request),
+          name: `${request.name} - ${this.$t("action.duplicate")}`,
+        }
+
+        teamUtils.saveRequestAsTeams(
+          this.$apollo,
+          JSON.stringify(newReq),
+          `${request.name} - ${this.$t("action.duplicate")}`,
+          this.collectionsType.selectedTeam.id,
+          collectionID
+        )
+      } else if (this.collectionsType.type === "my-collections") {
+        saveRESTRequestAs(folderPath, {
+          ...cloneDeep(request),
+          name: `${request.name} - ${this.$t("action.duplicate")}`,
+        })
       }
     },
   },

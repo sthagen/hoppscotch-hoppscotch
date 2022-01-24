@@ -38,19 +38,22 @@ import { defineComponent } from "@nuxtjs/composition-api"
 export default defineComponent({
   props: {
     show: Boolean,
-    placeholderCollName: { type: String, default: null },
+    editingCollectionName: { type: String, default: null },
   },
   data() {
     return {
       name: null,
     }
   },
+  watch: {
+    editingCollectionName(val) {
+      this.name = val
+    },
+  },
   methods: {
     saveCollection() {
       if (!this.name) {
-        this.$toast.error(this.$t("collection.invalid_name"), {
-          icon: "error_outline",
-        })
+        this.$toast.error(this.$t("collection.invalid_name"))
         return
       }
       this.$emit("submit", this.name)

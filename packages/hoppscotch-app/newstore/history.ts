@@ -1,15 +1,13 @@
 import eq from "lodash/eq"
 import { pluck } from "rxjs/operators"
-import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
-import { completedRESTResponse$ } from "./RESTSession"
 import {
   HoppRESTRequest,
   translateToNewRequest,
-} from "~/helpers/types/HoppRESTRequest"
-import {
   HoppGQLRequest,
   translateToGQLRequest,
-} from "~/helpers/types/HoppGQLRequest"
+} from "@hoppscotch/data"
+import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
+import { completedRESTResponse$ } from "./RESTSession"
 
 export type RESTHistoryEntry = {
   v: number
@@ -24,6 +22,8 @@ export type RESTHistoryEntry = {
   star: boolean
 
   id?: string // For when Firebase Firestore is set
+
+  updatedOn?: Date
 }
 
 export type GQLHistoryEntry = {
@@ -35,6 +35,8 @@ export type GQLHistoryEntry = {
   star: boolean
 
   id?: string // For when Firestore ID is set
+
+  updatedOn?: Date
 }
 
 export function makeRESTHistoryEntry(
@@ -52,6 +54,7 @@ export function makeGQLHistoryEntry(
   return {
     v: 1,
     ...x,
+    updatedOn: new Date(),
   }
 }
 
@@ -63,7 +66,7 @@ export function translateToNewRESTHistory(x: any): RESTHistoryEntry {
   const star = x.star ?? false
   const duration = x.duration ?? null
   const statusCode = x.status ?? null
-
+  const updatedOn = x.updatedOn ?? null
   const obj: RESTHistoryEntry = makeRESTHistoryEntry({
     request,
     star,
@@ -71,6 +74,7 @@ export function translateToNewRESTHistory(x: any): RESTHistoryEntry {
       duration,
       statusCode,
     },
+    updatedOn,
   })
 
   if (x.id) obj.id = x.id
@@ -85,11 +89,13 @@ export function translateToNewGQLHistory(x: any): GQLHistoryEntry {
   const request = translateToGQLRequest(x)
   const star = x.star ?? false
   const response = x.response ?? ""
+  const updatedOn = x.updatedOn ?? ""
 
   const obj: GQLHistoryEntry = makeGQLHistoryEntry({
     request,
     star,
     response,
+    updatedOn,
   })
 
   if (x.id) obj.id = x.id
@@ -289,16 +295,33 @@ export function toggleGraphqlHistoryEntryStar(entry: GQLHistoryEntry) {
 // Listen to completed responses to add to history
 completedRESTResponse$.subscribe((res) => {
   if (res !== null) {
-    if (res.type === "loading" || res.type === "network_fail") return
+    if (
+      res.type === "loading" ||
+      res.type === "network_fail" ||
+      res.type === "script_fail"
+    )
+      return
 
     addRESTHistoryEntry(
       makeRESTHistoryEntry({
-        request: res.req,
+        request: {
+          auth: res.req.auth,
+          body: res.req.body,
+          endpoint: res.req.endpoint,
+          headers: res.req.headers,
+          method: res.req.method,
+          name: res.req.name,
+          params: res.req.params,
+          preRequestScript: res.req.preRequestScript,
+          testScript: res.req.testScript,
+          v: res.req.v,
+        },
         responseMeta: {
           duration: res.meta.responseDuration,
           statusCode: res.statusCode,
         },
         star: false,
+        updatedOn: new Date(),
       })
     )
   }

@@ -1,7 +1,7 @@
 <template>
   <SmartModal
     v-if="show"
-    :title="`${$t('collection.save_as')}`"
+    :title="`${t('collection.save_as')}`"
     @close="hideModal"
   >
     <template #body>
@@ -18,11 +18,11 @@
             @keyup.enter="saveRequestAs"
           />
           <label for="selectLabelSaveReq">
-            {{ $t("request.name") }}
+            {{ t("request.name") }}
           </label>
         </div>
         <label class="p-4">
-          {{ $t("collection.select_location") }}
+          {{ t("collection.select_location") }}
         </label>
         <CollectionsGraphql
           v-if="mode === 'graphql'"
@@ -45,11 +45,11 @@
     <template #footer>
       <span>
         <ButtonPrimary
-          :label="`${$t('action.save')}`"
+          :label="`${t('action.save')}`"
           @click.native="saveRequestAs"
         />
         <ButtonSecondary
-          :label="`${$t('action.cancel')}`"
+          :label="`${t('action.cancel')}`"
           @click.native="hideModal"
         />
       </span>
@@ -58,8 +58,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, useContext, watch } from "@nuxtjs/composition-api"
-import { isHoppRESTRequest } from "~/helpers/types/HoppRESTRequest"
+import { reactive, ref, watch } from "@nuxtjs/composition-api"
+import { HoppGQLRequest, isHoppRESTRequest } from "@hoppscotch/data"
+import cloneDeep from "lodash/cloneDeep"
 import {
   editGraphqlRequest,
   editRESTRequest,
@@ -74,7 +75,9 @@ import {
 } from "~/newstore/RESTSession"
 import * as teamUtils from "~/helpers/teams/utils"
 import { apolloClient } from "~/helpers/apollo"
-import { HoppGQLRequest } from "~/helpers/types/HoppGQLRequest"
+import { useI18n, useToast } from "~/helpers/utils/composables"
+
+const t = useI18n()
 
 type CollectionType =
   | {
@@ -137,12 +140,7 @@ const emit = defineEmits<{
   (e: "hide-modal"): void
 }>()
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-
-const t = i18n.t.bind(i18n)
+const toast = useToast()
 
 // TODO: Use a better implementation with computed ?
 // This implementation can't work across updates to mode prop (which won't happen tho)
@@ -194,20 +192,20 @@ const hideModal = () => {
 
 const saveRequestAs = async () => {
   if (!requestName.value) {
-    $toast.error(`${t("error.empty_req_name")}`, {
-      icon: "error_outline",
-    })
+    toast.error(`${t("error.empty_req_name")}`)
     return
   }
   if (picked.value === null) {
-    $toast.error(`${t("collection.select")}`, {
-      icon: "error_outline",
-    })
+    toast.error(`${t("collection.select")}`)
     return
   }
 
+  // Clone Deep because objects are shared by reference so updating
+  // just one bit will update other referenced shared instances
   const requestUpdated =
-    props.mode === "rest" ? getRESTRequest() : getGQLSession().request
+    props.mode === "rest"
+      ? cloneDeep(getRESTRequest())
+      : cloneDeep(getGQLSession().request)
 
   // // Filter out all REST file inputs
   // if (this.mode === "rest" && requestUpdated.bodyParams) {
@@ -231,6 +229,8 @@ const saveRequestAs = async () => {
       folderPath: picked.value.folderPath,
       requestIndex: picked.value.requestIndex,
     })
+
+    requestSaved()
   } else if (picked.value.pickedType === "my-folder") {
     if (!isHoppRESTRequest(requestUpdated))
       throw new Error("requestUpdated is not a REST Request")
@@ -245,6 +245,8 @@ const saveRequestAs = async () => {
       folderPath: picked.value.folderPath,
       requestIndex: insertionIndex,
     })
+
+    requestSaved()
   } else if (picked.value.pickedType === "my-collection") {
     if (!isHoppRESTRequest(requestUpdated))
       throw new Error("requestUpdated is not a REST Request")
@@ -253,11 +255,14 @@ const saveRequestAs = async () => {
       `${picked.value.collectionIndex}`,
       requestUpdated
     )
+
     setRESTSaveContext({
       originLocation: "user-collection",
       folderPath: `${picked.value.collectionIndex}`,
       requestIndex: insertionIndex,
     })
+
+    requestSaved()
   } else if (picked.value.pickedType === "teams-request") {
     if (!isHoppRESTRequest(requestUpdated))
       throw new Error("requestUpdated is not a REST Request")
@@ -265,12 +270,20 @@ const saveRequestAs = async () => {
     if (collectionsType.value.type !== "team-collections")
       throw new Error("Collections Type mismatch")
 
-    teamUtils.overwriteRequestTeams(
-      apolloClient,
-      JSON.stringify(requestUpdated),
-      requestUpdated.name,
-      picked.value.requestID
-    )
+    teamUtils
+      .overwriteRequestTeams(
+        apolloClient,
+        JSON.stringify(requestUpdated),
+        requestUpdated.name,
+        picked.value.requestID
+      )
+      .then(() => {
+        requestSaved()
+      })
+      .catch((error) => {
+        toast.error(`${t("profile.no_permission")}`)
+        throw new Error(error)
+      })
 
     setRESTSaveContext({
       originLocation: "team-collection",
@@ -283,21 +296,28 @@ const saveRequestAs = async () => {
     if (collectionsType.value.type !== "team-collections")
       throw new Error("Collections Type mismatch")
 
-    const req = await teamUtils.saveRequestAsTeams(
-      apolloClient,
-      JSON.stringify(requestUpdated),
-      requestUpdated.name,
-      collectionsType.value.selectedTeam.id,
-      picked.value.folderID
-    )
+    try {
+      const req = await teamUtils.saveRequestAsTeams(
+        apolloClient,
+        JSON.stringify(requestUpdated),
+        requestUpdated.name,
+        collectionsType.value.selectedTeam.id,
+        picked.value.folderID
+      )
 
-    if (req && req.id) {
-      setRESTSaveContext({
-        originLocation: "team-collection",
-        requestID: req.id,
-        teamID: collectionsType.value.selectedTeam.id,
-        collectionID: picked.value.folderID,
-      })
+      if (req && req.id) {
+        setRESTSaveContext({
+          originLocation: "team-collection",
+          requestID: req.id,
+          teamID: collectionsType.value.selectedTeam.id,
+          collectionID: picked.value.folderID,
+        })
+      }
+
+      requestSaved()
+    } catch (error) {
+      toast.error(`${t("profile.no_permission")}`)
+      console.error(error)
     }
   } else if (picked.value.pickedType === "teams-collection") {
     if (!isHoppRESTRequest(requestUpdated))
@@ -306,21 +326,28 @@ const saveRequestAs = async () => {
     if (collectionsType.value.type !== "team-collections")
       throw new Error("Collections Type mismatch")
 
-    const req = await teamUtils.saveRequestAsTeams(
-      apolloClient,
-      JSON.stringify(requestUpdated),
-      requestUpdated.name,
-      collectionsType.value.selectedTeam.id,
-      picked.value.collectionID
-    )
+    try {
+      const req = await teamUtils.saveRequestAsTeams(
+        apolloClient,
+        JSON.stringify(requestUpdated),
+        requestUpdated.name,
+        collectionsType.value.selectedTeam.id,
+        picked.value.collectionID
+      )
 
-    if (req && req.id) {
-      setRESTSaveContext({
-        originLocation: "team-collection",
-        requestID: req.id,
-        teamID: collectionsType.value.selectedTeam.id,
-        collectionID: picked.value.collectionID,
-      })
+      if (req && req.id) {
+        setRESTSaveContext({
+          originLocation: "team-collection",
+          requestID: req.id,
+          teamID: collectionsType.value.selectedTeam.id,
+          collectionID: picked.value.collectionID,
+        })
+      }
+
+      requestSaved()
+    } catch (error) {
+      toast.error(`${t("profile.no_permission")}`)
+      console.error(error)
     }
   } else if (picked.value.pickedType === "gql-my-request") {
     // TODO: Check for GQL request ?
@@ -329,22 +356,29 @@ const saveRequestAs = async () => {
       picked.value.requestIndex,
       requestUpdated as HoppGQLRequest
     )
+
+    requestSaved()
   } else if (picked.value.pickedType === "gql-my-folder") {
     // TODO: Check for GQL request ?
     saveGraphqlRequestAs(
       picked.value.folderPath,
       requestUpdated as HoppGQLRequest
     )
+
+    requestSaved()
   } else if (picked.value.pickedType === "gql-my-collection") {
     // TODO: Check for GQL request ?
     saveGraphqlRequestAs(
       `${picked.value.collectionIndex}`,
       requestUpdated as HoppGQLRequest
     )
+
+    requestSaved()
   }
-  $toast.success(`${t("request.added")}`, {
-    icon: "post_add",
-  })
+}
+
+const requestSaved = () => {
+  toast.success(`${t("request.added")}`)
   hideModal()
 }
 

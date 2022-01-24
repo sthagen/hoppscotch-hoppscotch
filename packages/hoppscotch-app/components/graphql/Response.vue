@@ -1,48 +1,38 @@
 <template>
-  <AppSection ref="response" label="response">
+  <div>
     <div
       v-if="responseString === 'loading'"
-      class="flex flex-col p-4 items-center justify-center"
+      class="flex flex-col items-center justify-center p-4"
     >
-      <SmartSpinner class="mb-4" />
-      <span class="text-secondaryLight">{{ $t("state.loading") }}</span>
+      <SmartSpinner class="my-4" />
+      <span class="text-secondaryLight">{{ t("state.loading") }}</span>
     </div>
     <div v-else-if="responseString">
       <div
-        class="
-          bg-primary
-          border-b border-dividerLight
-          flex flex-1
-          pl-4
-          top-0
-          z-10
-          sticky
-          items-center
-          justify-between
-        "
+        class="sticky top-0 z-10 flex items-center justify-between flex-1 pl-4 border-b bg-primary border-dividerLight"
       >
         <label class="font-semibold text-secondaryLight">
-          {{ $t("response.title") }}
+          {{ t("response.title") }}
         </label>
         <div class="flex">
           <ButtonSecondary
             v-tippy="{ theme: 'tooltip' }"
-            :title="$t('state.linewrap')"
+            :title="t('state.linewrap')"
             :class="{ '!text-accent': linewrapEnabled }"
-            svg="corner-down-left"
+            svg="wrap-text"
             @click.native.prevent="linewrapEnabled = !linewrapEnabled"
           />
           <ButtonSecondary
             ref="downloadResponse"
             v-tippy="{ theme: 'tooltip' }"
-            :title="$t('action.download_file')"
+            :title="t('action.download_file')"
             :svg="downloadResponseIcon"
             @click.native="downloadResponse"
           />
           <ButtonSecondary
             ref="copyResponseButton"
             v-tippy="{ theme: 'tooltip' }"
-            :title="$t('action.copy')"
+            :title="t('action.copy')"
             :svg="copyResponseIcon"
             @click.native="copyResponse"
           />
@@ -52,21 +42,15 @@
     </div>
     <div
       v-else
-      class="
-        flex flex-col flex-1
-        text-secondaryLight
-        p-4
-        items-center
-        justify-center
-      "
+      class="flex flex-col items-center justify-center flex-1 p-4 text-secondaryLight"
     >
-      <div class="flex space-x-2 pb-4">
-        <div class="flex flex-col space-y-4 text-right items-end">
-          <span class="flex flex-1 items-center">
-            {{ $t("shortcut.general.command_menu") }}
+      <div class="flex pb-4 my-4 space-x-2">
+        <div class="flex flex-col items-end space-y-4 text-right">
+          <span class="flex items-center flex-1">
+            {{ t("shortcut.general.command_menu") }}
           </span>
-          <span class="flex flex-1 items-center">
-            {{ $t("shortcut.general.help_menu") }}
+          <span class="flex items-center flex-1">
+            {{ t("shortcut.general.help_menu") }}
           </span>
         </div>
         <div class="flex flex-col space-y-4">
@@ -79,29 +63,31 @@
         </div>
       </div>
       <ButtonSecondary
-        :label="`${$t('app.documentation')}`"
-        to="https://docs.hoppscotch.io"
+        :label="`${t('app.documentation')}`"
+        to="https://docs.hoppscotch.io/features/response"
         svg="external-link"
         blank
         outline
         reverse
       />
     </div>
-  </AppSection>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, useContext } from "@nuxtjs/composition-api"
+import { reactive, ref } from "@nuxtjs/composition-api"
 import { useCodemirror } from "~/helpers/editor/codemirror"
 import { copyToClipboard } from "~/helpers/utils/clipboard"
-import { useReadonlyStream } from "~/helpers/utils/composables"
+import {
+  useReadonlyStream,
+  useI18n,
+  useToast,
+} from "~/helpers/utils/composables"
 import { gqlResponse$ } from "~/newstore/GQLSession"
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
+
+const toast = useToast()
 
 const responseString = useReadonlyStream(gqlResponse$, "")
 
@@ -119,6 +105,7 @@ useCodemirror(
     },
     linter: null,
     completer: null,
+    environmentHighlights: false,
   })
 )
 
@@ -128,6 +115,7 @@ const copyResponseIcon = ref("copy")
 const copyResponse = () => {
   copyToClipboard(responseString.value!)
   copyResponseIcon.value = "check"
+  toast.success(`${t("state.copied_to_clipboard")}`)
   setTimeout(() => (copyResponseIcon.value = "copy"), 1000)
 }
 
@@ -141,9 +129,7 @@ const downloadResponse = () => {
   document.body.appendChild(a)
   a.click()
   downloadResponseIcon.value = "check"
-  $toast.success(`${t("state.download_started")}`, {
-    icon: "downloading",
-  })
+  toast.success(`${t("state.download_started")}`)
   setTimeout(() => {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
@@ -151,14 +137,3 @@ const downloadResponse = () => {
   }, 1000)
 }
 </script>
-
-<style lang="scss" scoped>
-.shortcut-key {
-  @apply bg-dividerLight;
-  @apply rounded;
-  @apply ml-2;
-  @apply py-1;
-  @apply px-2;
-  @apply inline-flex;
-}
-</style>
