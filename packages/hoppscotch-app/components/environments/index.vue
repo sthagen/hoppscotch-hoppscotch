@@ -5,50 +5,53 @@
         <template #trigger>
           <span
             v-tippy="{ theme: 'tooltip' }"
-            :title="`${$t('environment.select')}`"
+            :title="`${t('environment.select')}`"
             class="flex-1 bg-transparent border-b border-dividerLight select-wrapper"
           >
             <ButtonSecondary
               v-if="selectedEnvironmentIndex !== -1"
               :label="environments[selectedEnvironmentIndex].name"
-              class="flex-1 pr-8 rounded-none"
+              class="flex-1 !justify-start pr-8 rounded-none"
             />
             <ButtonSecondary
               v-else
-              :label="`${$t('environment.no_environment')}`"
-              class="flex-1 pr-8 rounded-none"
+              :label="`${t('environment.select')}`"
+              class="flex-1 !justify-start pr-8 rounded-none"
             />
           </span>
         </template>
-        <SmartItem
-          :label="`${$t('environment.no_environment')}`"
-          :info-icon="selectedEnvironmentIndex === -1 ? 'done' : ''"
-          :active-info-icon="selectedEnvironmentIndex === -1"
-          @click.native="
-            () => {
-              selectedEnvironmentIndex = -1
-              $refs.options.tippy().hide()
-            }
-          "
-        />
-        <SmartItem
-          v-for="(gen, index) in environments"
-          :key="`gen-${index}`"
-          :label="gen.name"
-          :info-icon="index === selectedEnvironmentIndex ? 'done' : ''"
-          :active-info-icon="index === selectedEnvironmentIndex"
-          @click.native="
-            () => {
-              selectedEnvironmentIndex = index
-              $refs.options.tippy().hide()
-            }
-          "
-        />
+        <div class="flex flex-col" role="menu">
+          <SmartItem
+            :label="`${t('environment.no_environment')}`"
+            :info-icon="selectedEnvironmentIndex === -1 ? 'done' : ''"
+            :active-info-icon="selectedEnvironmentIndex === -1"
+            @click.native="
+              () => {
+                selectedEnvironmentIndex = -1
+                options.tippy().hide()
+              }
+            "
+          />
+          <hr v-if="environments.length > 0" />
+          <SmartItem
+            v-for="(gen, index) in environments"
+            :key="`gen-${index}`"
+            :label="gen.name"
+            :info-icon="index === selectedEnvironmentIndex ? 'done' : ''"
+            :active-info-icon="index === selectedEnvironmentIndex"
+            @click.native="
+              () => {
+                selectedEnvironmentIndex = index
+                options.tippy().hide()
+              }
+            "
+          />
+        </div>
       </tippy>
       <div class="flex justify-between flex-1 border-b border-dividerLight">
         <ButtonSecondary
           svg="plus"
-          :label="`${$t('action.new')}`"
+          :label="`${t('action.new')}`"
           class="!rounded-none"
           @click.native="displayModalAdd(true)"
         />
@@ -57,13 +60,13 @@
             v-tippy="{ theme: 'tooltip' }"
             to="https://docs.hoppscotch.io/features/environments"
             blank
-            :title="$t('app.wiki')"
+            :title="t('app.wiki')"
             svg="help-circle"
           />
           <ButtonSecondary
             v-tippy="{ theme: 'tooltip' }"
             svg="archive"
-            :title="$t('modal.import_export')"
+            :title="t('modal.import_export')"
             @click.native="displayModalImportExport(true)"
           />
         </div>
@@ -92,24 +95,21 @@
         :src="`/images/states/${$colorMode.value}/blockchain.svg`"
         loading="lazy"
         class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
-        :alt="`${$t('empty.environments')}`"
+        :alt="`${t('empty.environments')}`"
       />
       <span class="pb-4 text-center">
-        {{ $t("empty.environments") }}
+        {{ t("empty.environments") }}
       </span>
       <ButtonSecondary
-        :label="`${$t('add.new')}`"
+        :label="`${t('add.new')}`"
         filled
         class="mb-4"
         @click.native="displayModalAdd(true)"
       />
     </div>
-    <EnvironmentsAdd
-      :show="showModalAdd"
-      @hide-modal="displayModalAdd(false)"
-    />
-    <EnvironmentsEdit
-      :show="showModalEdit"
+    <EnvironmentsDetails
+      :show="showModalDetails"
+      :action="action"
       :editing-environment-index="editingEnvironmentIndex"
       @hide-modal="displayModalEdit(false)"
     />
@@ -120,9 +120,13 @@
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent } from "@nuxtjs/composition-api"
-import { useReadonlyStream, useStream } from "~/helpers/utils/composables"
+<script setup lang="ts">
+import { computed, ref } from "@nuxtjs/composition-api"
+import {
+  useReadonlyStream,
+  useStream,
+  useI18n,
+} from "~/helpers/utils/composables"
 import {
   environments$,
   setCurrentEnvironment,
@@ -130,52 +134,49 @@ import {
   globalEnv$,
 } from "~/newstore/environments"
 
-export default defineComponent({
-  setup() {
-    const globalEnv = useReadonlyStream(globalEnv$, [])
+const t = useI18n()
 
-    const globalEnvironment = computed(() => ({
-      name: "Global",
-      variables: globalEnv.value,
-    }))
+const options = ref<any | null>(null)
 
-    return {
-      environments: useReadonlyStream(environments$, []),
-      globalEnvironment,
-      selectedEnvironmentIndex: useStream(
-        selectedEnvIndex$,
-        -1,
-        setCurrentEnvironment
-      ),
-    }
-  },
-  data() {
-    return {
-      showModalImportExport: false,
-      showModalAdd: false,
-      showModalEdit: false,
-      editingEnvironmentIndex: undefined as number | "Global" | undefined,
-    }
-  },
-  methods: {
-    displayModalAdd(shouldDisplay: boolean) {
-      this.showModalAdd = shouldDisplay
-    },
-    displayModalEdit(shouldDisplay: boolean) {
-      this.showModalEdit = shouldDisplay
+const globalEnv = useReadonlyStream(globalEnv$, [])
 
-      if (!shouldDisplay) this.resetSelectedData()
-    },
-    displayModalImportExport(shouldDisplay: boolean) {
-      this.showModalImportExport = shouldDisplay
-    },
-    editEnvironment(environmentIndex: number | "Global") {
-      this.$data.editingEnvironmentIndex = environmentIndex
-      this.displayModalEdit(true)
-    },
-    resetSelectedData() {
-      this.$data.editingEnvironmentIndex = undefined
-    },
-  },
-})
+const globalEnvironment = computed(() => ({
+  name: "Global",
+  variables: globalEnv.value,
+}))
+
+const environments = useReadonlyStream(environments$, [])
+
+const selectedEnvironmentIndex = useStream(
+  selectedEnvIndex$,
+  -1,
+  setCurrentEnvironment
+)
+
+const showModalImportExport = ref(false)
+const showModalDetails = ref(false)
+const action = ref<"new" | "edit">("edit")
+const editingEnvironmentIndex = ref<number | "Global" | null>(null)
+
+const displayModalAdd = (shouldDisplay: boolean) => {
+  action.value = "new"
+  showModalDetails.value = shouldDisplay
+}
+const displayModalEdit = (shouldDisplay: boolean) => {
+  action.value = "edit"
+  showModalDetails.value = shouldDisplay
+
+  if (!shouldDisplay) resetSelectedData()
+}
+const displayModalImportExport = (shouldDisplay: boolean) => {
+  showModalImportExport.value = shouldDisplay
+}
+const editEnvironment = (environmentIndex: number | "Global") => {
+  editingEnvironmentIndex.value = environmentIndex
+  action.value = "edit"
+  displayModalEdit(true)
+}
+const resetSelectedData = () => {
+  editingEnvironmentIndex.value = null
+}
 </script>

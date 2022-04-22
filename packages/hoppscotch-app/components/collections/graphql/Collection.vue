@@ -11,7 +11,7 @@
       @contextmenu.prevent="options.tippy().show()"
     >
       <span
-        class="cursor-pointer flex px-4 items-center justify-center"
+        class="flex items-center justify-center px-4 cursor-pointer"
         @click="toggleShowChildren()"
       >
         <SmartIcon
@@ -21,7 +21,7 @@
         />
       </span>
       <span
-        class="cursor-pointer flex flex-1 min-w-0 py-2 pr-2 transition group-hover:text-secondaryDark"
+        class="flex flex-1 min-w-0 py-2 pr-2 cursor-pointer transition group-hover:text-secondaryDark"
         @click="toggleShowChildren()"
       >
         <span class="truncate" :class="{ 'text-accent': isSelected }">
@@ -29,6 +29,17 @@
         </span>
       </span>
       <div class="flex">
+        <ButtonSecondary
+          v-tippy="{ theme: 'tooltip' }"
+          svg="file-plus"
+          :title="$t('request.new')"
+          class="hidden group-hover:inline-flex"
+          @click.native="
+            $emit('add-request', {
+              path: `${collectionIndex}`,
+            })
+          "
+        />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
           svg="folder-plus"
@@ -60,11 +71,27 @@
               ref="tippyActions"
               class="flex flex-col focus:outline-none"
               tabindex="0"
+              role="menu"
+              @keyup.r="requestAction.$el.click()"
               @keyup.n="folderAction.$el.click()"
               @keyup.e="edit.$el.click()"
               @keyup.delete="deleteAction.$el.click()"
               @keyup.escape="options.tippy().hide()"
             >
+              <SmartItem
+                ref="requestAction"
+                svg="file-plus"
+                :label="`${$t('request.new')}`"
+                :shortcut="['R']"
+                @click.native="
+                  () => {
+                    $emit('add-request', {
+                      path: `${collectionIndex}`,
+                    })
+                    options.tippy().hide()
+                  }
+                "
+              />
               <SmartItem
                 ref="folderAction"
                 svg="folder-plus"
@@ -125,6 +152,7 @@
           :collection-index="collectionIndex"
           :doc="doc"
           :is-filtered="isFiltered"
+          @add-request="$emit('add-request', $event)"
           @add-folder="$emit('add-folder', $event)"
           @edit-folder="$emit('edit-folder', $event)"
           @edit-request="$emit('edit-request', $event)"
@@ -151,12 +179,12 @@
           v-if="
             collection.folders.length === 0 && collection.requests.length === 0
           "
-          class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+          class="flex flex-col items-center justify-center p-4 text-secondaryLight"
         >
           <img
             :src="`/images/states/${$colorMode.value}/pack.svg`"
             loading="lazy"
-            class="flex-col object-contain object-center h-16 mb-4 w-16 inline-flex"
+            class="inline-flex flex-col object-contain object-center w-16 h-16 mb-4"
             :alt="`${$t('empty.collection')}`"
           />
           <span class="text-center">
@@ -195,6 +223,7 @@ export default defineComponent({
     return {
       tippyActions: ref<any | null>(null),
       options: ref<any | null>(null),
+      requestAction: ref<any | null>(null),
       folderAction: ref<any | null>(null),
       edit: ref<any | null>(null),
       deleteAction: ref<any | null>(null),

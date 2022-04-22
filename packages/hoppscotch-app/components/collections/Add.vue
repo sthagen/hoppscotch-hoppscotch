@@ -1,5 +1,10 @@
 <template>
-  <SmartModal v-if="show" :title="$t('collection.new')" @close="hideModal">
+  <SmartModal
+    v-if="show"
+    dialog
+    :title="$t('collection.new')"
+    @close="hideModal"
+  >
     <template #body>
       <div class="flex flex-col px-2">
         <input
@@ -21,6 +26,7 @@
       <span>
         <ButtonPrimary
           :label="$t('action.save')"
+          :loading="loadingState"
           @click.native="addNewCollection"
         />
         <ButtonSecondary
@@ -38,6 +44,7 @@ import { defineComponent } from "@nuxtjs/composition-api"
 export default defineComponent({
   props: {
     show: Boolean,
+    loadingState: Boolean,
   },
   data() {
     return {
@@ -51,7 +58,6 @@ export default defineComponent({
         return
       }
       this.$emit("submit", this.name)
-      this.hideModal()
     },
     hideModal() {
       this.name = null

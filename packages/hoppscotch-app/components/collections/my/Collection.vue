@@ -11,7 +11,7 @@
       @contextmenu.prevent="options.tippy().show()"
     >
       <span
-        class="cursor-pointer flex px-4 items-center justify-center"
+        class="flex items-center justify-center px-4 cursor-pointer"
         @click="toggleShowChildren()"
       >
         <SmartIcon
@@ -21,7 +21,7 @@
         />
       </span>
       <span
-        class="cursor-pointer flex flex-1 min-w-0 py-2 pr-2 transition group-hover:text-secondaryDark"
+        class="flex flex-1 min-w-0 py-2 pr-2 cursor-pointer transition group-hover:text-secondaryDark"
         @click="toggleShowChildren()"
       >
         <span class="truncate" :class="{ 'text-accent': isSelected }">
@@ -44,6 +44,18 @@
           svg="check-circle"
           color="green"
           @click.native="$emit('unselect-collection')"
+        />
+        <ButtonSecondary
+          v-if="!doc"
+          v-tippy="{ theme: 'tooltip' }"
+          svg="file-plus"
+          :title="$t('request.new')"
+          class="hidden group-hover:inline-flex"
+          @click.native="
+            $emit('add-request', {
+              path: `${collectionIndex}`,
+            })
+          "
         />
         <ButtonSecondary
           v-if="!doc"
@@ -78,11 +90,28 @@
               ref="tippyActions"
               class="flex flex-col focus:outline-none"
               tabindex="0"
+              role="menu"
+              @keyup.r="requestAction.$el.click()"
               @keyup.n="folderAction.$el.click()"
               @keyup.e="edit.$el.click()"
               @keyup.delete="deleteAction.$el.click()"
+              @keyup.x="exportAction.$el.click()"
               @keyup.escape="options.tippy().hide()"
             >
+              <SmartItem
+                ref="requestAction"
+                svg="file-plus"
+                :label="$t('request.new')"
+                :shortcut="['R']"
+                @click.native="
+                  () => {
+                    $emit('add-request', {
+                      path: `${collectionIndex}`,
+                    })
+                    options.tippy().hide()
+                  }
+                "
+              />
               <SmartItem
                 ref="folderAction"
                 svg="folder-plus"
@@ -111,13 +140,25 @@
                 "
               />
               <SmartItem
+                ref="exportAction"
+                svg="download"
+                :label="$t('export.title')"
+                :shortcut="['X']"
+                @click.native="
+                  () => {
+                    exportCollection()
+                    options.tippy().hide()
+                  }
+                "
+              />
+              <SmartItem
                 ref="deleteAction"
                 svg="trash-2"
                 :label="$t('action.delete')"
                 :shortcut="['⌫']"
                 @click.native="
                   () => {
-                    confirmRemove = true
+                    removeCollection()
                     options.tippy().hide()
                   }
                 "
@@ -145,12 +186,14 @@
           :collections-type="collectionsType"
           :is-filtered="isFiltered"
           :picked="picked"
+          @add-request="$emit('add-request', $event)"
           @add-folder="$emit('add-folder', $event)"
           @edit-folder="$emit('edit-folder', $event)"
           @edit-request="$emit('edit-request', $event)"
           @duplicate-request="$emit('duplicate-request', $event)"
           @select="$emit('select', $event)"
           @remove-request="$emit('remove-request', $event)"
+          @remove-folder="$emit('remove-folder', $event)"
         />
         <CollectionsMyRequest
           v-for="(request, index) in collection.requests"
@@ -177,12 +220,12 @@
             (collection.requests == undefined ||
               collection.requests.length === 0)
           "
-          class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+          class="flex flex-col items-center justify-center p-4 text-secondaryLight"
         >
           <img
             :src="`/images/states/${$colorMode.value}/pack.svg`"
             loading="lazy"
-            class="flex-col object-contain object-center h-16 mb-4 w-16 inline-flex"
+            class="inline-flex flex-col object-contain object-center w-16 h-16 mb-4"
             :alt="`${$t('empty.collection')}`"
           />
           <span class="text-center">
@@ -191,12 +234,6 @@
         </div>
       </div>
     </div>
-    <SmartConfirmModal
-      :show="confirmRemove"
-      :title="$t('confirm.remove_collection')"
-      @hide-modal="confirmRemove = false"
-      @resolve="removeCollection"
-    />
   </div>
 </template>
 
@@ -219,9 +256,11 @@ export default defineComponent({
     return {
       tippyActions: ref<any | null>(null),
       options: ref<any | null>(null),
+      requestAction: ref<any | null>(null),
       folderAction: ref<any | null>(null),
       edit: ref<any | null>(null),
       deleteAction: ref<any | null>(null),
+      exportAction: ref<any | null>(null),
     }
   },
   data() {
@@ -229,7 +268,6 @@ export default defineComponent({
       showChildren: false,
       dragging: false,
       selectedFolder: {},
-      confirmRemove: false,
       prevCursor: "",
       cursor: "",
       pageNo: 0,
@@ -251,6 +289,23 @@ export default defineComponent({
     },
   },
   methods: {
+    exportCollection() {
+      const collectionJSON = JSON.stringify(this.collection)
+
+      const file = new Blob([collectionJSON], { type: "application/json" })
+      const a = document.createElement("a")
+      const url = URL.createObjectURL(file)
+      a.href = url
+
+      a.download = `${this.collection.name}.json`
+      document.body.appendChild(a)
+      a.click()
+      this.$toast.success(this.$t("state.download_started").toString())
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 1000)
+    },
     toggleShowChildren() {
       if (this.$props.saveRequest)
         this.$emit("select", {
@@ -265,12 +320,11 @@ export default defineComponent({
     },
     removeCollection() {
       this.$emit("remove-collection", {
-        collectionsType: this.collectionsType,
         collectionIndex: this.collectionIndex,
         collectionID: this.collection.id,
       })
     },
-    dropEvent({ dataTransfer }) {
+    dropEvent({ dataTransfer }: any) {
       this.dragging = !this.dragging
       const folderPath = dataTransfer.getData("folderPath")
       const requestIndex = dataTransfer.getData("requestIndex")

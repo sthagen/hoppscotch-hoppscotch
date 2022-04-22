@@ -1,6 +1,7 @@
 <template>
   <SmartModal
     v-if="show"
+    dialog
     :title="$t('folder.new')"
     @close="$emit('hide-modal')"
   >
@@ -23,7 +24,11 @@
     </template>
     <template #footer>
       <span>
-        <ButtonPrimary :label="$t('action.save')" @click.native="addFolder" />
+        <ButtonPrimary
+          :label="$t('action.save')"
+          :loading="loadingState"
+          @click.native="addFolder"
+        />
         <ButtonSecondary
           :label="$t('action.cancel')"
           @click.native="hideModal"
@@ -42,6 +47,7 @@ export default defineComponent({
     folder: { type: Object, default: () => {} },
     folderPath: { type: String, default: null },
     collectionIndex: { type: Number, default: null },
+    loadingState: Boolean,
   },
   data() {
     return {
@@ -59,7 +65,6 @@ export default defineComponent({
         folder: this.folder,
         path: this.folderPath || `${this.collectionIndex}`,
       })
-      this.hideModal()
     },
     hideModal() {
       this.name = null
