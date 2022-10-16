@@ -7,6 +7,7 @@
     "clear_all": "Τα καθαρίζω όλα",
     "close": "Close",
     "connect": "Συνδέω-συωδεομαι",
+    "connecting": "Connecting",
     "copy": "αντίγραφο",
     "delete": "Διαγράφω",
     "disconnect": "Αποσυνδέω",
@@ -35,6 +36,7 @@
     "search": "Αναζήτηση",
     "send": "Στείλετε",
     "start": "Αρχή",
+    "starting": "Starting",
     "stop": "Να σταματήσει",
     "to_close": "to close",
     "to_navigate": "to navigate",
@@ -77,7 +79,7 @@
     "status": "Κατάσταση",
     "status_description": "Check the status of the website",
     "terms_and_privacy": "Όροι και απόρρητο",
-    "twitter": "Κελάδημα",
+    "twitter": "Twitter",
     "type_a_command_search": "Πληκτρολογήστε μια εντολή ή αναζήτηση…",
     "we_use_cookies": "Χρησιμοποιούμε cookies",
     "whats_new": "Τι νέα?",
@@ -168,7 +170,7 @@
     "members": "Η ομάδα είναι άδεια",
     "parameters": "Αυτό το αίτημα δεν έχει παραμέτρους",
     "pending_invites": "There are no pending invites for this team",
-    "profile": "Login in to view your profile",
+    "profile": "Login to view your profile",
     "protocols": "Τα πρωτόκολλα είναι κενά",
     "schema": "Συνδεθείτε σε ένα τελικό σημείο GraphQL",
     "shortcodes": "Shortcodes are empty",
@@ -184,11 +186,13 @@
     "deleted": "Environment deletion",
     "edit": "Επεξεργασία Περιβάλλοντος",
     "invalid_name": "Καταχωρίστε ένα έγκυρο όνομα για το περιβάλλον",
+    "my_environments": "My Environments",
     "nested_overflow": "nested environment variables are limited to 10 levels",
     "new": "Νέο Περιβάλλον",
     "no_environment": "Χωρίς περιβάλλον",
     "no_environment_description": "No environments were selected. Choose what to do with the following variables.",
     "select": "Επιλέξτε περιβάλλον",
+    "team_environments": "Team Environments",
     "title": "Περιβάλλοντα",
     "updated": "Environment updation",
     "variable_list": "Λίστα μεταβλητών"
@@ -325,6 +329,7 @@
   },
   "profile": {
     "app_settings": "App Settings",
+    "default_hopp_displayname": "Unnamed User",
     "editor": "Editor",
     "editor_description": "Editors can add, edit, and delete requests.",
     "email_verification_mail": "A verification email has been sent to your email address. Please click on the link to verify your email address.",
@@ -651,6 +656,11 @@
     "title": "Της ομάδας",
     "we_sent_invite_link": "We sent an invite link to all invitees!",
     "we_sent_invite_link_description": "Ask all invitees to check their inbox. Click on the link to join the team."
+  },
+  "team_environment": {
+    "deleted": "Environment Deleted",
+    "duplicate": "Environment Duplicated",
+    "not_found": "Environment not found."
   },
   "test": {
     "failed": "test failed",

@@ -7,6 +7,7 @@
     "clear_all": "Tyhjennä",
     "close": "Close",
     "connect": "Kytkeä",
+    "connecting": "Connecting",
     "copy": "Kopio",
     "delete": "Poistaa",
     "disconnect": "Katkaista",
@@ -35,6 +36,7 @@
     "search": "Hae",
     "send": "Lähettää",
     "start": "alkaa",
+    "starting": "Starting",
     "stop": "Lopettaa",
     "to_close": "to close",
     "to_navigate": "to navigate",
@@ -77,7 +79,7 @@
     "status": "Tila",
     "status_description": "Check the status of the website",
     "terms_and_privacy": "Ehdot ja yksityisyys",
-    "twitter": "Viserrys",
+    "twitter": "Twitter",
     "type_a_command_search": "Kirjoita komento tai hae…",
     "we_use_cookies": "Käytämme evästeitä",
     "whats_new": "Mikä on uutta?",
@@ -168,7 +170,7 @@
     "members": "Joukkue on tyhjä",
     "parameters": "Tässä pyynnössä ei ole parametreja",
     "pending_invites": "There are no pending invites for this team",
-    "profile": "Login in to view your profile",
+    "profile": "Login to view your profile",
     "protocols": "Protokollat ovat tyhjiä",
     "schema": "Muodosta yhteys GraphQL -päätepisteeseen",
     "shortcodes": "Shortcodes are empty",
@@ -184,11 +186,13 @@
     "deleted": "Environment deletion",
     "edit": "Muokkaa ympäristöä",
     "invalid_name": "Anna ympäristölle kelvollinen nimi",
+    "my_environments": "My Environments",
     "nested_overflow": "nested environment variables are limited to 10 levels",
     "new": "Uusi ympäristö",
     "no_environment": "Ei ympäristöä",
     "no_environment_description": "No environments were selected. Choose what to do with the following variables.",
     "select": "Valitse ympäristö",
+    "team_environments": "Team Environments",
     "title": "Ympäristöt",
     "updated": "Environment updation",
     "variable_list": "Muuttujien luettelo"
@@ -325,6 +329,7 @@
   },
   "profile": {
     "app_settings": "App Settings",
+    "default_hopp_displayname": "Unnamed User",
     "editor": "Editor",
     "editor_description": "Editors can add, edit, and delete requests.",
     "email_verification_mail": "A verification email has been sent to your email address. Please click on the link to verify your email address.",
@@ -651,6 +656,11 @@
     "title": "Joukkueet",
     "we_sent_invite_link": "We sent an invite link to all invitees!",
     "we_sent_invite_link_description": "Ask all invitees to check their inbox. Click on the link to join the team."
+  },
+  "team_environment": {
+    "deleted": "Environment Deleted",
+    "duplicate": "Environment Duplicated",
+    "not_found": "Environment not found."
   },
   "test": {
     "failed": "test failed",

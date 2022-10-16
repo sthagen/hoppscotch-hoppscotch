@@ -62,13 +62,13 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
         aggregateEnvs.find(
           (env) => env.key === text.slice(start - from, end - from)
           // env.key === word.slice(wordSelection.from + 2, wordSelection.to - 2)
-        )?.sourceEnv ?? "choose an environment"
+        )?.sourceEnv ?? "Choose an Environment"
 
       const envValue =
         aggregateEnvs.find(
           (env) => env.key === text.slice(start - from, end - from)
           // env.key === word.slice(wordSelection.from + 2, wordSelection.to - 2)
-        )?.value ?? "not found"
+        )?.value ?? "Not found"
 
       const result = parseTemplateStringE(envValue, aggregateEnvs)
 
@@ -76,7 +76,7 @@ const cursorTooltipField = (aggregateEnvs: AggregateEnvironment[]) =>
 
       const selectedEnvType = getSelectedEnvironmentType()
 
-      const envTypeIcon = `<i class="material-icons inline-flex items-center">${
+      const envTypeIcon = `<i class="inline-flex items-center pr-2 mr-2 -my-1 text-base border-r material-icons border-secondary">${
         selectedEnvType === "TEAM_ENV" ? "people" : "person"
       }</i>`
       return {

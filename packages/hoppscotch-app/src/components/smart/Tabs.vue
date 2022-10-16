@@ -25,8 +25,10 @@
               :class="[
                 { active: modelValue === tabID },
                 { vertical: vertical },
+                { 'opacity-75 !cursor-not-allowed': tabMeta.disabled },
               ]"
               :aria-label="tabMeta.label || ''"
+              :disabled="tabMeta.disabled"
               role="button"
               @keyup.enter="selectTab(tabID)"
               @click="selectTab(tabID)"
@@ -56,10 +58,13 @@
       </div>
     </div>
     <div
-      class="w-full h-full contents"
-      :class="{
-        '!flex flex-col flex-1 overflow-y-auto ': vertical,
-      }"
+      class="flex w-full h-full"
+      :class="[
+        {
+          'flex-col flex-1 overflow-y-auto ': vertical,
+        },
+        contentStyles,
+      ]"
     >
       <slot></slot>
     </div>
@@ -80,6 +85,7 @@ export type TabMeta = {
   icon: string | Component | null
   indicator: boolean
   info: string | null
+  disabled: boolean
 }
 
 export type TabProvider = {
@@ -107,6 +113,10 @@ const props = defineProps({
   modelValue: {
     type: String,
     required: true,
+  },
+  contentStyles: {
+    type: String,
+    default: "",
   },
 })
 
