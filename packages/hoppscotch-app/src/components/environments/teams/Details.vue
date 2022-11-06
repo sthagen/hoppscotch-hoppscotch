@@ -57,6 +57,7 @@
           >
             <input
               v-model="env.key"
+              v-focus
               class="flex flex-1 px-4 py-2 bg-transparent"
               :class="isViewer && 'opacity-25'"
               :placeholder="`${t('count.variable', { count: index + 1 })}`"
@@ -65,6 +66,7 @@
             />
             <SmartEnvInput
               v-model="env.value"
+              :select-text-on-mount="env.key === editingVariableName"
               :placeholder="`${t('count.value', { count: index + 1 })}`"
               :envs="liveEnvs"
               :name="'value' + index"
@@ -117,9 +119,15 @@
         <ButtonPrimary
           :label="`${t('action.save')}`"
           :loading="isLoading"
+          outline
           @click="saveEnvironment"
         />
-        <ButtonSecondary :label="`${t('action.cancel')}`" @click="hideModal" />
+        <ButtonSecondary
+          :label="`${t('action.cancel')}`"
+          outline
+          filled
+          @click="hideModal"
+        />
       </span>
     </template>
   </SmartModal>
@@ -167,6 +175,7 @@ const props = withDefaults(
     action: "edit" | "new"
     editingEnvironment: TeamEnvironment | null
     editingTeamId: string | undefined
+    editingVariableName: string | null
     isViewer: boolean
   }>(),
   {

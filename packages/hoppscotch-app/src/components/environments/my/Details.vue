@@ -56,12 +56,14 @@
           >
             <input
               v-model="env.key"
+              v-focus
               class="flex flex-1 px-4 py-2 bg-transparent"
               :placeholder="`${t('count.variable', { count: index + 1 })}`"
               :name="'param' + index"
             />
             <SmartEnvInput
               v-model="env.value"
+              :select-text-on-mount="env.key === editingVariableName"
               :placeholder="`${t('count.value', { count: index + 1 })}`"
               :envs="liveEnvs"
               :name="'value' + index"
@@ -104,9 +106,15 @@
       <span class="flex space-x-2">
         <ButtonPrimary
           :label="`${t('action.save')}`"
+          outline
           @click="saveEnvironment"
         />
-        <ButtonSecondary :label="`${t('action.cancel')}`" @click="hideModal" />
+        <ButtonSecondary
+          :label="`${t('action.cancel')}`"
+          outline
+          filled
+          @click="hideModal"
+        />
       </span>
     </template>
   </SmartModal>
@@ -157,12 +165,14 @@ const props = withDefaults(
     show: boolean
     action: "edit" | "new"
     editingEnvironmentIndex: number | "Global" | null
+    editingVariableName: string | null
     envVars?: () => Environment["variables"]
   }>(),
   {
     show: false,
     action: "edit",
     editingEnvironmentIndex: null,
+    editingVariableName: null,
     envVars: () => [],
   }
 )
