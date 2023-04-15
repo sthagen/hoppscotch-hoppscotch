@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col flex-1">
+  <div class="flex flex-col flex-1 bg-primary">
     <div
       class="sticky z-10 flex justify-between flex-1 border-b bg-primary border-dividerLight"
       :style="
@@ -33,12 +33,17 @@
     </div>
     <div class="flex flex-col flex-1">
       <SmartTree :adapter="myAdapter">
-        <template #content="{ node, toggleChildren, isOpen }">
+        <template
+          #content="{ node, toggleChildren, isOpen, highlightChildren }"
+        >
           <CollectionsCollection
             v-if="node.data.type === 'collections'"
+            :id="node.id"
+            :parent-i-d="node.data.data.parentIndex"
             :data="node.data.data.data"
             :collections-type="collectionsType.type"
             :is-open="isOpen"
+            :is-last-item="node.data.isLastItem"
             :is-selected="
               isSelected({
                 collectionIndex: parseInt(node.id),
@@ -72,6 +77,22 @@
             "
             @remove-collection="emit('remove-collection', node.id)"
             @drop-event="dropEvent($event, node.id)"
+            @drag-event="dragEvent($event, node.id)"
+            @update-collection-order="
+              updateCollectionOrder($event, {
+                destinationCollectionIndex: node.id,
+                destinationCollectionParentIndex: node.data.data.parentIndex,
+              })
+            "
+            @update-last-collection-order="
+              updateCollectionOrder($event, {
+                destinationCollectionIndex: null,
+                destinationCollectionParentIndex: node.data.data.parentIndex,
+              })
+            "
+            @dragging="
+              (isDraging) => highlightChildren(isDraging ? node.id : null)
+            "
             @toggle-children="
               () => {
                 toggleChildren(),
@@ -85,9 +106,12 @@
           />
           <CollectionsCollection
             v-if="node.data.type === 'folders'"
+            :id="node.id"
+            :parent-i-d="node.data.data.parentIndex"
             :data="node.data.data.data"
             :collections-type="collectionsType.type"
             :is-open="isOpen"
+            :is-last-item="node.data.isLastItem"
             :is-selected="
               isSelected({
                 folderPath: node.id,
@@ -121,6 +145,22 @@
             "
             @remove-collection="emit('remove-folder', node.id)"
             @drop-event="dropEvent($event, node.id)"
+            @drag-event="dragEvent($event, node.id)"
+            @update-collection-order="
+              updateCollectionOrder($event, {
+                destinationCollectionIndex: node.id,
+                destinationCollectionParentIndex: node.data.data.parentIndex,
+              })
+            "
+            @update-last-collection-order="
+              updateCollectionOrder($event, {
+                destinationCollectionIndex: null,
+                destinationCollectionParentIndex: node.data.data.parentIndex,
+              })
+            "
+            @dragging="
+              (isDraging) => highlightChildren(isDraging ? node.id : null)
+            "
             @toggle-children="
               () => {
                 toggleChildren(),
@@ -135,8 +175,11 @@
           <CollectionsRequest
             v-if="node.data.type === 'requests'"
             :request="node.data.data.data"
+            :request-i-d="node.id"
+            :parent-i-d="node.data.data.parentIndex"
             :collections-type="collectionsType.type"
             :save-request="saveRequest"
+            :is-last-item="node.data.isLastItem"
             :is-active="
               isActiveRequest(
                 node.data.data.parentIndex,
@@ -182,7 +225,19 @@
             @drag-request="
               dragRequest($event, {
                 folderPath: node.data.data.parentIndex,
-                requestIndex: pathToIndex(node.id),
+                requestIndex: node.id,
+              })
+            "
+            @update-request-order="
+              updateRequestOrder($event, {
+                folderPath: node.data.data.parentIndex,
+                requestIndex: node.id,
+              })
+            "
+            @update-last-request-order="
+              updateRequestOrder($event, {
+                folderPath: node.data.data.parentIndex,
+                requestIndex: null,
               })
             "
           />
@@ -274,14 +329,14 @@ import { GetMyTeamsQuery } from "~/helpers/backend/graphql"
 import { ChildrenResult, SmartTreeAdapter } from "~/helpers/treeAdapter"
 import { useI18n } from "@composables/i18n"
 import { useColorMode } from "@composables/theming"
-import { useReadonlyStream } from "~/composables/stream"
-import { restSaveContext$ } from "~/newstore/RESTSession"
 import { pipe } from "fp-ts/function"
 import * as O from "fp-ts/Option"
 import { Picked } from "~/helpers/types/HoppPicked.js"
+import { currentActiveTab } from "~/helpers/rest/tab"
 
 export type Collection = {
   type: "collections"
+  isLastItem: boolean
   data: {
     parentIndex: null
     data: HoppCollection<HoppRESTRequest>
@@ -290,6 +345,7 @@ export type Collection = {
 
 type Folder = {
   type: "folders"
+  isLastItem: boolean
   data: {
     parentIndex: string
     data: HoppCollection<HoppRESTRequest>
@@ -298,6 +354,7 @@ type Folder = {
 
 type Requests = {
   type: "requests"
+  isLastItem: boolean
   data: {
     parentIndex: string
     data: HoppRESTRequest
@@ -413,7 +470,32 @@ const emit = defineEmits<{
     payload: {
       folderPath: string
       requestIndex: string
-      collectionIndex: string
+      destinationCollectionIndex: string
+    }
+  ): void
+  (
+    event: "drop-collection",
+    payload: {
+      collectionIndexDragged: string
+      destinationCollectionIndex: string
+    }
+  ): void
+  (
+    event: "update-request-order",
+    payload: {
+      dragedRequestIndex: string
+      destinationRequestIndex: string | null
+      destinationCollectionIndex: string
+    }
+  ): void
+  (
+    event: "update-collection-order",
+    payload: {
+      dragedCollectionIndex: string
+      destinationCollection: {
+        destinationCollectionIndex: string | null
+        destinationCollectionParentIndex: string | null
+      }
     }
   ): void
   (event: "select", payload: Picked | null): void
@@ -422,63 +504,57 @@ const emit = defineEmits<{
 
 const refFilterCollection = toRef(props, "filteredCollections")
 
-const pathToIndex = computed(() => {
-  return (path: string) => {
-    const pathArr = path.split("/")
-    return pathArr[pathArr.length - 1]
-  }
-})
+const pathToIndex = (path: string) => {
+  const pathArr = path.split("/")
+  return pathArr[pathArr.length - 1]
+}
 
-const isSelected = computed(() => {
-  return ({
-    collectionIndex,
-    folderPath,
-    requestIndex,
-  }: {
-    collectionIndex?: number | undefined
-    folderPath?: string | undefined
-    requestIndex?: number | undefined
-  }) => {
-    if (collectionIndex !== undefined) {
-      return (
-        props.picked &&
-        props.picked.pickedType === "my-collection" &&
-        props.picked.collectionIndex === collectionIndex
-      )
-    } else if (requestIndex !== undefined && folderPath !== undefined) {
-      return (
-        props.picked &&
-        props.picked.pickedType === "my-request" &&
-        props.picked.folderPath === folderPath &&
-        props.picked.requestIndex === requestIndex
-      )
-    } else {
-      return (
-        props.picked &&
-        props.picked.pickedType === "my-folder" &&
-        props.picked.folderPath === folderPath
-      )
-    }
-  }
-})
-
-const active = useReadonlyStream(restSaveContext$, null)
-
-const isActiveRequest = computed(() => {
-  return (folderPath: string, requestIndex: number) => {
-    return pipe(
-      active.value,
-      O.fromNullable,
-      O.filter(
-        (active) =>
-          active.originLocation === "user-collection" &&
-          active.folderPath === folderPath &&
-          active.requestIndex === requestIndex
-      ),
-      O.isSome
+const isSelected = ({
+  collectionIndex,
+  folderPath,
+  requestIndex,
+}: {
+  collectionIndex?: number | undefined
+  folderPath?: string | undefined
+  requestIndex?: number | undefined
+}) => {
+  if (collectionIndex !== undefined) {
+    return (
+      props.picked &&
+      props.picked.pickedType === "my-collection" &&
+      props.picked.collectionIndex === collectionIndex
+    )
+  } else if (requestIndex !== undefined && folderPath !== undefined) {
+    return (
+      props.picked &&
+      props.picked.pickedType === "my-request" &&
+      props.picked.folderPath === folderPath &&
+      props.picked.requestIndex === requestIndex
+    )
+  } else {
+    return (
+      props.picked &&
+      props.picked.pickedType === "my-folder" &&
+      props.picked.folderPath === folderPath
     )
   }
-})
+}
+
+const active = computed(() => currentActiveTab.value.document.saveContext)
+
+const isActiveRequest = (folderPath: string, requestIndex: number) => {
+  return pipe(
+    active.value,
+    O.fromNullable,
+    O.filter(
+      (active) =>
+        active.originLocation === "user-collection" &&
+        active.folderPath === folderPath &&
+        active.requestIndex === requestIndex
+    ),
+    O.isSome
+  )
+}
 
 const selectRequest = (data: {
   request: HoppRESTRequest
@@ -486,6 +562,7 @@ const selectRequest = (data: {
   requestIndex: string
 }) => {
   const { request, folderPath, requestIndex } = data
+
   if (props.saveRequest) {
     emit("select", {
       pickedType: "my-request",
@@ -497,9 +574,13 @@ const selectRequest = (data: {
       request,
       folderPath,
       requestIndex,
-      isActive: isActiveRequest.value(folderPath, parseInt(requestIndex)),
+      isActive: isActiveRequest(folderPath, parseInt(requestIndex)),
     })
   }
+}
+
+const dragEvent = (dataTransfer: DataTransfer, collectionIndex: string) => {
+  dataTransfer.setData("collectionIndex", collectionIndex)
 }
 
 const dragRequest = (
@@ -514,13 +595,59 @@ const dragRequest = (
   dataTransfer.setData("requestIndex", requestIndex)
 }
 
-const dropEvent = (dataTransfer: DataTransfer, collectionIndex: string) => {
+const dropEvent = (
+  dataTransfer: DataTransfer,
+  destinationCollectionIndex: string
+) => {
   const folderPath = dataTransfer.getData("folderPath")
   const requestIndex = dataTransfer.getData("requestIndex")
-  emit("drop-request", {
+  const collectionIndexDragged = dataTransfer.getData("collectionIndex")
+
+  if (folderPath && requestIndex) {
+    emit("drop-request", {
+      folderPath,
+      requestIndex,
+      destinationCollectionIndex,
+    })
+  } else {
+    emit("drop-collection", {
+      collectionIndexDragged,
+      destinationCollectionIndex,
+    })
+  }
+}
+
+const updateRequestOrder = (
+  dataTransfer: DataTransfer,
+  {
     folderPath,
     requestIndex,
-    collectionIndex,
+  }: { folderPath: string | null; requestIndex: string | null }
+) => {
+  if (!folderPath) return
+  const dragedRequestIndex = dataTransfer.getData("requestIndex")
+  const destinationRequestIndex = requestIndex
+  const destinationCollectionIndex = folderPath
+
+  emit("update-request-order", {
+    dragedRequestIndex,
+    destinationRequestIndex,
+    destinationCollectionIndex,
+  })
+}
+
+const updateCollectionOrder = (
+  dataTransfer: DataTransfer,
+  destinationCollection: {
+    destinationCollectionIndex: string | null
+    destinationCollectionParentIndex: string | null
+  }
+) => {
+  const dragedCollectionIndex = dataTransfer.getData("collectionIndex")
+
+  emit("update-collection-order", {
+    dragedCollectionIndex,
+    destinationCollection,
   })
 }
 
@@ -550,6 +677,7 @@ class MyCollectionsAdapter implements SmartTreeAdapter<MyCollectionNode> {
           id: index.toString(),
           data: {
             type: "collections",
+            isLastItem: index === this.data.value.length - 1,
             data: {
               parentIndex: null,
               data: item,
@@ -571,23 +699,31 @@ class MyCollectionsAdapter implements SmartTreeAdapter<MyCollectionNode> {
 
       if (item) {
         const data = [
-          ...item.folders.map((item, index) => ({
+          ...item.folders.map((folder, index) => ({
             id: `${id}/${index}`,
             data: {
+              isLastItem:
+                item.folders && item.folders.length > 1
+                  ? index === item.folders.length - 1
+                  : false,
               type: "folders",
               data: {
                 parentIndex: id,
-                data: item,
+                data: folder,
               },
             },
           })),
-          ...item.requests.map((item, index) => ({
+          ...item.requests.map((requests, index) => ({
             id: `${id}/${index}`,
             data: {
+              isLastItem:
+                item.requests && item.requests.length > 1
+                  ? index === item.requests.length - 1
+                  : false,
               type: "requests",
               data: {
                 parentIndex: id,
-                data: item,
+                data: requests,
               },
             },
           })),
