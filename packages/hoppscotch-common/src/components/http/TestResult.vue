@@ -42,7 +42,7 @@
                 class="flex p-4 bg-error text-secondaryDark"
                 role="alert"
               >
-                <component :is="IconAlertTriangle" class="mr-4 svg-icons" />
+                <icon-lucide-alert-triangle class="mr-4 svg-icons" />
                 <div class="flex flex-col">
                   <p>
                     {{ t("environment.no_environment_description") }}
@@ -189,7 +189,7 @@
       <HoppButtonSecondary
         outline
         :label="`${t('action.learn_more')}`"
-        to="https://docs.hoppscotch.io/features/tests"
+        to="https://docs.hoppscotch.io/documentation/getting-started/rest/tests"
         blank
         :icon="IconExternalLink"
         reverse
@@ -220,7 +220,6 @@ import { HoppTestResult } from "~/helpers/types/HoppTestResult"
 
 import IconTrash2 from "~icons/lucide/trash-2"
 import IconExternalLink from "~icons/lucide/external-link"
-import IconAlertTriangle from "~icons/lucide/alert-triangle"
 import IconCheck from "~icons/lucide/check"
 import IconClose from "~icons/lucide/x"
 
