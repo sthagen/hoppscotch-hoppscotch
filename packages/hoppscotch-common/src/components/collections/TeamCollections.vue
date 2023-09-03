@@ -46,7 +46,7 @@
       </span>
     </div>
     <div class="flex flex-col overflow-hidden">
-      <SmartTree :adapter="teamAdapter">
+      <HoppSmartTree :adapter="teamAdapter">
         <template
           #content="{ node, toggleChildren, isOpen, highlightChildren }"
         >
@@ -262,70 +262,56 @@
         </template>
         <template #emptyNode="{ node }">
           <div v-if="node === null">
-            <div
-              class="flex flex-col items-center justify-center p-4 text-secondaryLight"
-              @drop="(e) => e.stopPropagation()"
-            >
-              <img
+            <div @drop="(e) => e.stopPropagation()">
+              <HoppSmartPlaceholder
                 :src="`/images/states/${colorMode.value}/pack.svg`"
-                loading="lazy"
-                class="inline-flex flex-col object-contain object-center w-16 h-16 mb-4"
-                :alt="`${t('empty.collection')}`"
-              />
-              <span class="pb-4 text-center">
-                {{ t("empty.collections") }}
-              </span>
-              <HoppButtonSecondary
-                v-if="hasNoTeamAccess"
-                v-tippy="{ theme: 'tooltip' }"
-                disabled
-                filled
-                outline
-                :title="t('team.no_access')"
-                :label="t('action.new')"
-              />
-              <HoppButtonSecondary
-                v-else
-                :icon="IconPlus"
-                :label="t('action.new')"
-                filled
-                outline
-                @click="emit('display-modal-add')"
-              />
+                :alt="`${t('empty.collections')}`"
+                :text="t('empty.collections')"
+              >
+                <HoppButtonSecondary
+                  v-if="hasNoTeamAccess"
+                  v-tippy="{ theme: 'tooltip' }"
+                  disabled
+                  filled
+                  outline
+                  :title="t('team.no_access')"
+                  :label="t('action.new')"
+                />
+                <HoppButtonSecondary
+                  v-else
+                  :icon="IconPlus"
+                  :label="t('action.new')"
+                  filled
+                  outline
+                  @click="emit('display-modal-add')"
+                />
+              </HoppSmartPlaceholder>
             </div>
           </div>
           <div
             v-else-if="node.data.type === 'collections'"
-            class="flex flex-col items-center justify-center p-4 text-secondaryLight"
             @drop="(e) => e.stopPropagation()"
           >
-            <img
+            <HoppSmartPlaceholder
               :src="`/images/states/${colorMode.value}/pack.svg`"
-              loading="lazy"
-              class="inline-flex flex-col object-contain object-center w-16 h-16 mb-4"
-              :alt="`${t('empty.collection')}`"
-            />
-            <span class="pb-4 text-center">
-              {{ t("empty.collections") }}
-            </span>
+              :alt="`${t('empty.collections')}`"
+              :text="t('empty.collections')"
+            >
+            </HoppSmartPlaceholder>
           </div>
           <div
             v-else-if="node.data.type === 'folders'"
-            class="flex flex-col items-center justify-center p-4 text-secondaryLight"
             @drop="(e) => e.stopPropagation()"
           >
-            <img
+            <HoppSmartPlaceholder
               :src="`/images/states/${colorMode.value}/pack.svg`"
-              loading="lazy"
-              class="inline-flex flex-col object-contain object-center w-16 h-16 mb-4"
               :alt="`${t('empty.folder')}`"
-            />
-            <span class="text-center">
-              {{ t("empty.folder") }}
-            </span>
+              :text="t('empty.folder')"
+            >
+            </HoppSmartPlaceholder>
           </div>
         </template>
-      </SmartTree>
+      </HoppSmartTree>
     </div>
   </div>
 </template>
@@ -340,7 +326,10 @@ import { useI18n } from "@composables/i18n"
 import { useColorMode } from "@composables/theming"
 import { TeamCollection } from "~/helpers/teams/TeamCollection"
 import { TeamRequest } from "~/helpers/teams/TeamRequest"
-import { ChildrenResult, SmartTreeAdapter } from "~/helpers/treeAdapter"
+import {
+  ChildrenResult,
+  SmartTreeAdapter,
+} from "@hoppscotch/ui/dist/helpers/treeAdapter"
 import { cloneDeep } from "lodash-es"
 import { HoppRESTRequest } from "@hoppscotch/data"
 import { pipe } from "fp-ts/function"

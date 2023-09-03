@@ -6,19 +6,13 @@
     @close="$emit('hide-modal')"
   >
     <template #body>
-      <div class="flex flex-col">
-        <input
-          id="selectLabelAddRequest"
-          v-model="name"
-          v-focus
-          class="input floating-input"
-          placeholder=" "
-          type="text"
-          autocomplete="off"
-          @keyup.enter="addRequest"
-        />
-        <label for="selectLabelAddRequest">{{ t("action.label") }}</label>
-      </div>
+      <HoppSmartInput
+        v-model="editingName"
+        placeholder=" "
+        :label="t('action.label')"
+        input-styles="floating-input"
+        @submit="addRequest"
+      />
     </template>
     <template #footer>
       <span class="flex space-x-2">
@@ -64,23 +58,23 @@ const emit = defineEmits<{
   (event: "add-request", name: string): void
 }>()
 
-const name = ref("")
+const editingName = ref("")
 
 watch(
   () => props.show,
   (show) => {
     if (show) {
-      name.value = currentActiveTab.value.document.request.name
+      editingName.value = currentActiveTab.value.document.request.name
     }
   }
 )
 
 const addRequest = () => {
-  if (name.value.trim() === "") {
+  if (editingName.value.trim() === "") {
     toast.error(`${t("error.empty_req_name")}`)
     return
   }
-  emit("add-request", name.value)
+  emit("add-request", editingName.value)
 }
 
 const hideModal = () => {

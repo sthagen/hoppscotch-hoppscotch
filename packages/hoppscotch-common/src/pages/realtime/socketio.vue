@@ -190,19 +190,12 @@
               />
             </div>
           </div>
-          <div
+          <HoppSmartPlaceholder
             v-if="authType === 'None'"
-            class="flex flex-col items-center justify-center p-4 text-secondaryLight"
+            :src="`/images/states/${colorMode.value}/login.svg`"
+            :alt="`${t('socketio.connection_not_authorized')}`"
+            :text="`${t('socketio.connection_not_authorized')}`"
           >
-            <img
-              :src="`/images/states/${colorMode.value}/login.svg`"
-              loading="lazy"
-              class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
-              :alt="`${t('empty.authorization')}`"
-            />
-            <span class="pb-4 text-center">
-              {{ t("socketio.connection_not_authorized") }}
-            </span>
             <HoppButtonSecondary
               outline
               :label="t('app.documentation')"
@@ -210,9 +203,8 @@
               blank
               :icon="IconExternalLink"
               reverse
-              class="mb-4"
             />
-          </div>
+          </HoppSmartPlaceholder>
           <div
             v-if="authType === 'Bearer'"
             class="flex flex-1 border-b border-dividerLight"
@@ -246,7 +238,7 @@
     <template #secondary>
       <RealtimeLog
         :title="t('socketio.log')"
-        :log="(log as LogEntryData[])"
+        :log="log as LogEntryData[]"
         @delete="clearLogEntries()"
       />
     </template>

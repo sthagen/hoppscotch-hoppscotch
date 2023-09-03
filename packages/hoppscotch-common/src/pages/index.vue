@@ -19,22 +19,14 @@
             :close-visibility="'hover'"
           >
             <template #tabhead>
-              <div
-                v-tippy="{ theme: 'tooltip', delay: [500, 20] }"
-                :title="tab.document.request.name"
-                class="truncate px-2"
-                @dblclick="openReqRenameModal()"
-              >
-                <span
-                  class="font-semibold text-tiny"
-                  :class="getMethodLabelColorClassOf(tab.document.request)"
-                >
-                  {{ tab.document.request.method }}
-                </span>
-                <span class="leading-8 px-2">
-                  {{ tab.document.request.name }}
-                </span>
-              </div>
+              <HttpTabHead
+                :tab="tab"
+                :is-removable="tabs.length > 1"
+                @open-rename-modal="openReqRenameModal(tab.id)"
+                @close-tab="removeTab(tab.id)"
+                @close-other-tabs="closeOtherTabsAction(tab.id)"
+                @duplicate-tab="duplicateTab(tab.id)"
+              />
             </template>
             <template #suffix>
               <span
@@ -78,11 +70,25 @@
       @hide-modal="onCloseConfirmSaveTab"
       @resolve="onResolveConfirmSaveTab"
     />
+    <HoppSmartConfirmModal
+      :show="confirmingCloseAllTabs"
+      :confirm="t('modal.close_unsaved_tab')"
+      :title="t('confirm.close_unsaved_tabs', { count: unsavedTabsCount })"
+      @hide-modal="confirmingCloseAllTabs = false"
+      @resolve="onResolveConfirmCloseAllTabs"
+    />
     <CollectionsSaveRequest
       v-if="savingRequest"
       mode="rest"
       :show="savingRequest"
       @hide-modal="onSaveModalClose"
+    />
+    <AppContextMenu
+      v-if="contextMenu.show"
+      :show="contextMenu.show"
+      :position="contextMenu.position"
+      :text="contextMenu.text"
+      @hide-modal="contextMenu.show = false"
     />
   </div>
 </template>
@@ -92,10 +98,10 @@ import { ref, onMounted, onBeforeUnmount, onBeforeMount } from "vue"
 import { safelyExtractRESTRequest } from "@hoppscotch/data"
 import { translateExtURLParams } from "~/helpers/RESTExtURLParams"
 import { useRoute } from "vue-router"
-import { getMethodLabelColorClassOf } from "~/helpers/rest/labelColoring"
 import { useI18n } from "@composables/i18n"
 import {
   closeTab,
+  closeOtherTabs,
   createNewTab,
   currentActiveTab,
   currentTabID,
@@ -106,9 +112,10 @@ import {
   persistableTabState,
   updateTab,
   updateTabOrdering,
+  getDirtyTabsCount,
 } from "~/helpers/rest/tab"
 import { getDefaultRESTRequest } from "~/helpers/rest/default"
-import { invokeAction } from "~/helpers/actions"
+import { defineActionHandler, invokeAction } from "~/helpers/actions"
 import { onLoggedIn } from "~/composables/auth"
 import { platform } from "~/platform"
 import {
@@ -129,14 +136,41 @@ import {
   changeCurrentSyncStatus,
   currentSyncingStatus$,
 } from "~/newstore/syncing"
+import { useService } from "dioc/vue"
+import { InspectionService } from "~/services/inspection"
+import { HeaderInspectorService } from "~/services/inspection/inspectors/header.inspector"
+import { EnvironmentInspectorService } from "~/services/inspection/inspectors/environment.inspector"
+import { ResponseInspectorService } from "~/services/inspection/inspectors/response.inspector"
 
 const savingRequest = ref(false)
 const confirmingCloseForTabID = ref<string | null>(null)
+const confirmingCloseAllTabs = ref(false)
 const showRenamingReqNameModal = ref(false)
 const reqName = ref<string>("")
+const unsavedTabsCount = ref(0)
+const exceptedTabID = ref<string | null>(null)
+const renameTabID = ref<string | null>(null)
 
 const t = useI18n()
 const toast = useToast()
+
+type PopupDetails = {
+  show: boolean
+  position: {
+    top: number
+    left: number
+  }
+  text: string | null
+}
+
+const contextMenu = ref<PopupDetails>({
+  show: false,
+  position: {
+    top: 0,
+    left: 0,
+  },
+  text: null,
+})
 
 const tabs = getActiveTabs()
 
@@ -180,23 +214,60 @@ const sortTabs = (e: { oldIndex: number; newIndex: number }) => {
   updateTabOrdering(e.oldIndex, e.newIndex)
 }
 
-const removeTab = (tabID: string) => {
-  const tab = getTabRef(tabID)
+const inspectionService = useService(InspectionService)
 
-  if (tab.value.document.isDirty) {
+const removeTab = (tabID: string) => {
+  const tabState = getTabRef(tabID).value
+
+  if (tabState.document.isDirty) {
     confirmingCloseForTabID.value = tabID
   } else {
-    closeTab(tab.value.id)
+    closeTab(tabState.id)
+    inspectionService.deleteTabInspectorResult(tabState.id)
   }
 }
 
-const openReqRenameModal = () => {
+const closeOtherTabsAction = (tabID: string) => {
+  const dirtyTabCount = getDirtyTabsCount()
+  // If there are dirty tabs, show the confirm modal
+  if (dirtyTabCount > 0) {
+    confirmingCloseAllTabs.value = true
+    unsavedTabsCount.value = dirtyTabCount
+    exceptedTabID.value = tabID
+  } else {
+    closeOtherTabs(tabID)
+  }
+}
+
+const duplicateTab = (tabID: string) => {
+  const tab = getTabRef(tabID)
+  if (tab.value) {
+    const newTab = createNewTab({
+      request: tab.value.document.request,
+      isDirty: true,
+    })
+    currentTabID.value = newTab.id
+  }
+}
+
+const onResolveConfirmCloseAllTabs = () => {
+  if (exceptedTabID.value) closeOtherTabs(exceptedTabID.value)
+  confirmingCloseAllTabs.value = false
+}
+
+const openReqRenameModal = (tabID?: string) => {
+  if (tabID) {
+    const tab = getTabRef(tabID)
+    reqName.value = tab.value.document.request.name
+    renameTabID.value = tabID
+  } else {
+    reqName.value = currentActiveTab.value.document.request.name
+  }
   showRenamingReqNameModal.value = true
-  reqName.value = currentActiveTab.value.document.request.name
 }
 
 const renameReqName = () => {
-  const tab = getTabRef(currentTabID.value)
+  const tab = getTabRef(renameTabID.value ?? currentTabID.value)
   if (tab.value) {
     tab.value.document.request.name = reqName.value
     updateTab(tab.value)
@@ -210,6 +281,7 @@ const renameReqName = () => {
 const onCloseConfirmSaveTab = () => {
   if (!savingRequest.value && confirmingCloseForTabID.value) {
     closeTab(confirmingCloseForTabID.value)
+    inspectionService.deleteTabInspectorResult(confirmingCloseForTabID.value)
     confirmingCloseForTabID.value = null
   }
 }
@@ -365,7 +437,46 @@ function oAuthURL() {
   })
 }
 
+defineActionHandler("contextmenu.open", ({ position, text }) => {
+  if (text) {
+    contextMenu.value = {
+      show: true,
+      position,
+      text,
+    }
+  } else {
+    contextMenu.value = {
+      show: false,
+      position,
+      text,
+    }
+  }
+})
+
 setupTabStateSync()
 bindRequestToURLParams()
 oAuthURL()
+
+defineActionHandler("rest.request.open", ({ doc }) => {
+  createNewTab(doc)
+})
+
+defineActionHandler("request.rename", openReqRenameModal)
+defineActionHandler("tab.duplicate-tab", ({ tabID }) => {
+  duplicateTab(tabID ?? currentTabID.value)
+})
+defineActionHandler("tab.close-current", () => {
+  removeTab(currentTabID.value)
+})
+defineActionHandler("tab.close-other", () => {
+  closeOtherTabs(currentTabID.value)
+})
+defineActionHandler("tab.open-new", addNewTab)
+
+useService(HeaderInspectorService)
+useService(EnvironmentInspectorService)
+useService(ResponseInspectorService)
+for (const inspectorDef of platform.additionalInspectors ?? []) {
+  useService(inspectorDef.service)
+}
 </script>

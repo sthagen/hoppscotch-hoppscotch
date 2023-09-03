@@ -4,38 +4,36 @@
       <div
         class="sticky top-0 z-10 flex flex-shrink-0 p-4 space-x-2 overflow-x-auto bg-primary"
       >
-        <div class="inline-flex flex-1 space-x-2">
-          <input
-            id="websocket-url"
-            v-model="url"
-            class="w-full px-4 py-2 border rounded bg-primaryLight border-divider text-secondaryDark"
-            type="url"
-            autocomplete="off"
-            spellcheck="false"
-            :class="{ error: !isUrlValid }"
-            :placeholder="`${t('websocket.url')}`"
-            :disabled="
-              connectionState === 'CONNECTED' ||
-              connectionState === 'CONNECTING'
-            "
-            @keyup.enter="isUrlValid ? toggleConnection() : null"
-          />
-          <HoppButtonPrimary
-            id="connect"
-            :disabled="!isUrlValid"
-            class="w-32"
-            name="connect"
-            :label="
-              connectionState === 'CONNECTING'
-                ? t('action.connecting')
-                : connectionState === 'DISCONNECTED'
-                ? t('action.connect')
-                : t('action.disconnect')
-            "
-            :loading="connectionState === 'CONNECTING'"
-            @click="toggleConnection"
-          />
-        </div>
+        <HoppSmartInput
+          v-model="url"
+          type="url"
+          :autofocus="false"
+          styles="!inline-flex flex-1 space-x-2"
+          input-styles="w-full px-4 py-2 border rounded !bg-primaryLight border-divider text-secondaryDark"
+          :placeholder="`${t('websocket.url')}`"
+          :disabled="
+            connectionState === 'CONNECTED' || connectionState === 'CONNECTING'
+          "
+          @submit="isUrlValid ? toggleConnection() : null"
+        >
+          <template #button>
+            <HoppButtonPrimary
+              id="connect"
+              :disabled="!isUrlValid"
+              class="w-32"
+              name="connect"
+              :label="
+                connectionState === 'CONNECTING'
+                  ? t('action.connecting')
+                  : connectionState === 'DISCONNECTED'
+                  ? t('action.connect')
+                  : t('action.disconnect')
+              "
+              :loading="connectionState === 'CONNECTING'"
+              @click="toggleConnection"
+            />
+          </template>
+        </HoppSmartInput>
       </div>
       <HoppSmartTabs
         v-model="selectedTab"
@@ -159,27 +157,20 @@
               </div>
             </template>
           </draggable>
-          <div
+          <HoppSmartPlaceholder
             v-if="protocols.length === 0"
-            class="flex flex-col items-center justify-center p-4 text-secondaryLight"
+            :src="`/images/states/${colorMode.value}/add_category.svg`"
+            :alt="`${t('empty.protocols')}`"
+            :text="`${t('empty.protocols')}`"
           >
-            <img
-              :src="`/images/states/${colorMode.value}/add_category.svg`"
-              loading="lazy"
-              class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
-              :alt="`${t('empty.protocols')}`"
-            />
-            <span class="mb-4 text-center">
-              {{ t("empty.protocols") }}
-            </span>
-          </div>
+          </HoppSmartPlaceholder>
         </HoppSmartTab>
       </HoppSmartTabs>
     </template>
     <template #secondary>
       <RealtimeLog
         :title="t('websocket.log')"
-        :log="(log as LogEntryData[])"
+        :log="log as LogEntryData[]"
         @delete="clearLogEntries()"
       />
     </template>

@@ -7,6 +7,7 @@ import { HoppRESTResponse } from "../types/HoppRESTResponse"
 import { getDefaultRESTRequest } from "./default"
 import { HoppTestResult } from "../types/HoppTestResult"
 import { platform } from "~/platform"
+import { nextTick } from "vue"
 
 export type HoppRESTTab = {
   id: string
@@ -178,7 +179,36 @@ export function closeTab(tabID: string) {
 
   tabOrdering.value.splice(tabOrdering.value.indexOf(tabID), 1)
 
-  tabMap.delete(tabID)
+  nextTick(() => {
+    tabMap.delete(tabID)
+  })
+}
+
+export function closeOtherTabs(tabID: string) {
+  if (!tabMap.has(tabID)) {
+    console.warn(
+      `The tab to close other tabs does not exist (tab id: ${tabID})`
+    )
+    return
+  }
+
+  tabOrdering.value = [tabID]
+
+  tabMap.forEach((_, id) => {
+    if (id !== tabID) tabMap.delete(id)
+  })
+
+  currentTabID.value = tabID
+}
+
+export function getDirtyTabsCount() {
+  let count = 0
+
+  for (const tab of tabMap.values()) {
+    if (tab.document.isDirty) count++
+  }
+
+  return count
 }
 
 export function getTabRefWithSaveContext(ctx: HoppRESTSaveContext) {

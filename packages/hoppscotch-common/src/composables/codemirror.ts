@@ -40,6 +40,8 @@ import {
 import { HoppEnvironmentPlugin } from "@helpers/editor/extensions/HoppEnvironment"
 import xmlFormat from "xml-formatter"
 import { platform } from "~/platform"
+import { invokeAction } from "~/helpers/actions"
+import { useDebounceFn } from "@vueuse/core"
 // TODO: Migrate from legacy mode
 
 type ExtendedEditorConfig = {
@@ -56,6 +58,11 @@ type CodeMirrorOptions = {
 
   // NOTE: This property is not reactive
   environmentHighlights: boolean
+
+  additionalExts?: Extension[]
+
+  // callback on editor update
+  onUpdate?: (view: ViewUpdate) => void
 }
 
 const hoppCompleterExt = (completer: Completer): Extension => {
@@ -187,6 +194,7 @@ export function useCodemirror(
 ): { cursor: Ref<{ line: number; ch: number }> } {
   const { subscribeToStream } = useStreamSubscriber()
 
+  const additionalExts = new Compartment()
   const language = new Compartment()
   const lineWrapping = new Compartment()
   const placeholderConfig = new Compartment()
@@ -218,12 +226,58 @@ export function useCodemirror(
       ViewPlugin.fromClass(
         class {
           update(update: ViewUpdate) {
-            const cursorPos = update.state.selection.main.head
-            const line = update.state.doc.lineAt(cursorPos)
+            function handleTextSelection() {
+              const selection = view.value?.state.selection.main
+              if (selection) {
+                const from = selection.from
+                const to = selection.to
+                const text = view.value?.state.doc.sliceString(from, to)
+                const { top, left } = view.value?.coordsAtPos(from)
+                if (text) {
+                  invokeAction("contextmenu.open", {
+                    position: {
+                      top,
+                      left,
+                    },
+                    text,
+                  })
+                } else {
+                  invokeAction("contextmenu.open", {
+                    position: {
+                      top,
+                      left,
+                    },
+                    text: null,
+                  })
+                }
+              }
+            }
 
-            cachedCursor.value = {
-              line: line.number - 1,
-              ch: cursorPos - line.from,
+            // Debounce to prevent double click from selecting the word
+            const debounceFn = useDebounceFn(() => {
+              handleTextSelection()
+            }, 140)
+
+            el.addEventListener("mouseup", debounceFn)
+            el.addEventListener("keyup", debounceFn)
+
+            if (options.onUpdate) {
+              options.onUpdate(update)
+            }
+
+            if (update.selectionSet) {
+              const cursorPos = update.state.selection.main.head
+              const line = update.state.doc.lineAt(cursorPos)
+
+              cachedCursor.value = {
+                line: line.number - 1,
+                ch: cursorPos - line.from,
+              }
+
+              cursor.value = {
+                line: cachedCursor.value.line,
+                ch: cachedCursor.value.ch,
+              }
             }
 
             cursor.value = {
@@ -276,6 +330,8 @@ export function useCodemirror(
           run: indentLess,
         },
       ]),
+      EditorView.contentAttributes.of({ "data-enable-grammarly": "false" }),
+      additionalExts.of(options.additionalExts ?? []),
     ]
 
     if (environmentTooltip) extensions.push(environmentTooltip.extension)
@@ -347,6 +403,15 @@ export function useCodemirror(
             options.completer ?? undefined
           )
         ),
+      })
+    }
+  )
+
+  watch(
+    () => options.additionalExts,
+    (newExts) => {
+      view.value?.dispatch({
+        effects: additionalExts.reconfigure(newExts ?? []),
       })
     }
   )

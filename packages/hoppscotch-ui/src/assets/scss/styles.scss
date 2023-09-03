@@ -4,6 +4,7 @@
   @apply after:backface-hidden;
   @apply selection:bg-accentDark;
   @apply selection:text-accentContrast;
+  @apply overscroll-none;
 }
 
 :root {
@@ -165,12 +166,6 @@ a {
       @apply truncate;
       @apply sm:inline-flex;
     }
-
-    .env-icon {
-      @apply transition;
-      @apply inline-flex;
-      @apply items-center;
-    }
   }
 
   .tippy-svg-arrow {
@@ -189,10 +184,11 @@ a {
   @apply border-solid border-dividerDark;
   @apply rounded;
   @apply shadow-lg;
+  @apply max-w-[45vw] #{!important};
 
   .tippy-content {
     @apply flex flex-col;
-    @apply max-h-56;
+    @apply max-h-[45vh];
     @apply items-stretch;
     @apply overflow-y-auto;
     @apply text-secondary text-body;
@@ -200,6 +196,10 @@ a {
     @apply leading-normal;
     @apply focus:outline-none;
     scroll-behavior: smooth;
+
+    & > span {
+      @apply block #{!important};
+    }
   }
 
   .tippy-svg-arrow {
@@ -215,6 +215,7 @@ a {
 
 [data-v-tippy] {
   @apply flex flex-1;
+  @apply truncate;
 }
 
 [interactive] > div {
@@ -325,7 +326,7 @@ pre.ace_editor {
   @apply after:font-icon;
   @apply after:text-current;
   @apply after:right-3;
-  @apply after:content-["\e313"];
+  @apply after:content-["\e5cf"];
   @apply after:text-lg;
 }
 
@@ -480,6 +481,10 @@ pre.ace_editor {
   }
 }
 
+.cm-scroller {
+  @apply overscroll-y-auto;
+}
+
 .cm-editor {
   .cm-line::selection {
     @apply bg-accentDark #{!important};
@@ -566,4 +571,12 @@ details[open] summary .indicator {
 .color-picker[type="color"]::-webkit-color-swatch {
   @apply rounded;
   @apply border-0;
+}
+
+.gql-operation-not-highlight {
+  @apply opacity-50;
+}
+
+.gql-operation-highlight {
+  @apply opacity-100;
 }

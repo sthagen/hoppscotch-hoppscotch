@@ -20,7 +20,7 @@
           <span class="select-wrapper">
             <HoppButtonSecondary
               :label="
-                CodegenDefinitions.find((x) => x.name === codegenType).caption
+                CodegenDefinitions.find((x) => x.name === codegenType)!.caption
               "
               outline
               class="flex-1 pr-8"
@@ -56,20 +56,14 @@
                     }
                   "
                 />
-                <div
-                  v-if="
-                    !(
-                      filteredCodegenDefinitions.length !== 0 ||
-                      CodegenDefinitions.length === 0
-                    )
-                  "
-                  class="flex flex-col items-center justify-center p-4 text-secondaryLight"
+                <HoppSmartPlaceholder
+                  v-if="filteredCodegenDefinitions.length === 0"
+                  :text="`${t('state.nothing_found')} ‟${searchQuery}”`"
                 >
-                  <icon-lucide-search class="pb-2 opacity-75 svg-icons" />
-                  <span class="my-2 text-center">
-                    {{ t("state.nothing_found") }} "{{ searchQuery }}"
-                  </span>
-                </div>
+                  <template #icon>
+                    <icon-lucide-search class="pb-2 opacity-75 svg-icons" />
+                  </template>
+                </HoppSmartPlaceholder>
               </div>
             </div>
           </template>

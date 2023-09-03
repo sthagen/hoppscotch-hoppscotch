@@ -6,7 +6,9 @@
       </button>
     </div>
 
-    <h3 class="text-lg font-bold text-accentContrast py-6">Invited Users</h3>
+    <h3 class="text-lg font-bold text-accentContrast py-6">
+      {{ t('users.invited_users') }}
+    </h3>
 
     <div class="flex flex-col">
       <div class="py-2 overflow-x-auto">
@@ -15,7 +17,7 @@
             <HoppSmartSpinner />
           </div>
           <div v-else-if="error || invitedUsers === undefined">
-            <p class="text-xl">No invited users found..</p>
+            <p class="text-xl">{{ t('users.no_invite') }}</p>
           </div>
 
           <table v-else class="w-full text-left">
@@ -23,10 +25,10 @@
               <tr
                 class="text-secondary border-b border-dividerDark text-sm text-left"
               >
-                <th class="px-3 pb-3">Admin ID</th>
-                <th class="px-3 pb-3">Admin Email</th>
-                <th class="px-3 pb-3">Invitee Email</th>
-                <th class="px-3 pb-3">Invited On</th>
+                <th class="px-3 pb-3">{{ t('users.admin_id') }}</th>
+                <th class="px-3 pb-3">{{ t('users.admin_email') }}</th>
+                <th class="px-3 pb-3">{{ t('users.invitee_email') }}</th>
+                <th class="px-3 pb-3">{{ t('users.invited_on') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-divider">
@@ -34,7 +36,7 @@
                 v-if="invitedUsers.length === 0"
                 class="text-secondaryDark py-4"
               >
-                <div class="py-6 px-3">No invited users found..</div>
+                <div class="py-6 px-3">{{ t('users.no_invite') }}</div>
               </tr>
               <tr
                 v-else
@@ -42,8 +44,8 @@
                 :key="index"
                 class="text-secondaryDark hover:bg-zinc-800 hover:cursor-pointer rounded-xl"
               >
-                <td class="py-2 px-3 max-w-30">
-                  <div>
+                <td class="py-2 px-3 max-w-36">
+                  <div class="flex">
                     <span class="truncate">
                       {{ user?.adminUid }}
                     </span>
@@ -54,10 +56,12 @@
                     {{ user?.adminEmail }}
                   </span>
                 </td>
-                <td class="py-2 px-3">
-                  <span>
-                    {{ user?.inviteeEmail }}
-                  </span>
+                <td class="py-2 px-3 max-w-52">
+                  <div class="flex">
+                    <span class="truncate">
+                      {{ user?.inviteeEmail }}
+                    </span>
+                  </div>
                 </td>
                 <td class="py-2 px-3">
                   <div class="flex items-center">
@@ -85,6 +89,9 @@ import { InvitedUsersDocument } from '../../helpers/backend/graphql';
 import { format } from 'date-fns';
 import { HoppSmartSpinner } from '@hoppscotch/ui';
 import { useRouter } from 'vue-router';
+import { useI18n } from '~/composables/i18n';
+
+const t = useI18n();
 
 const router = useRouter();
 

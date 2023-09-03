@@ -18,15 +18,13 @@
       </span>
       <template #content="{ hide }">
         <div class="flex flex-col space-y-2">
-          <div class="sticky z-10 top-0 flex-shrink-0 overflow-x-auto">
-            <input
-              v-model="searchQuery"
-              type="search"
-              autocomplete="off"
-              class="flex w-full p-4 py-2 input !bg-primaryContrast"
-              :placeholder="`${t('action.search')}`"
-            />
-          </div>
+          <HoppSmartInput
+            v-model="searchQuery"
+            styles="ticky z-10 top-0 flex-shrink-0 overflow-x-auto"
+            :placeholder="`${t('action.search')}`"
+            type="search"
+            input-styles="flex w-full p-4 py-2 input !bg-primaryContrast"
+          />
           <div
             ref="tippyActions"
             class="flex flex-col focus:outline-none"
@@ -52,20 +50,19 @@
                 "
               />
             </HoppSmartLink>
-            <div
+            <HoppSmartPlaceholder
               v-if="
                 !(
                   filteredAppLanguages.length !== 0 ||
                   APP_LANGUAGES.length === 0
                 )
               "
-              class="flex flex-col items-center justify-center p-4 text-secondaryLight"
+              :text="`${t('state.nothing_found')} ‟${searchQuery}”`"
             >
-              <icon-lucide-search class="pb-2 opacity-75 svg-icons" />
-              <span class="my-2 text-center">
-                {{ t("state.nothing_found") }} "{{ searchQuery }}"
-              </span>
-            </div>
+              <template #icon>
+                <icon-lucide-search class="pb-2 opacity-75 svg-icons" />
+              </template>
+            </HoppSmartPlaceholder>
           </div>
         </div>
       </template>

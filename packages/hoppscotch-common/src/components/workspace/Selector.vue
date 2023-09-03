@@ -15,19 +15,12 @@
         <HoppSmartSpinner class="mb-4" />
         <span class="text-secondaryLight">{{ t("state.loading") }}</span>
       </div>
-      <div
+      <HoppSmartPlaceholder
         v-if="!loading && myTeams.length === 0"
-        class="flex flex-col items-center justify-center flex-1 p-4 text-secondaryLight"
+        :src="`/images/states/${colorMode.value}/add_group.svg`"
+        :alt="`${t('empty.teams')}`"
+        :text="`${t('empty.teams')}`"
       >
-        <img
-          :src="`/images/states/${colorMode.value}/add_group.svg`"
-          loading="lazy"
-          class="inline-flex flex-col object-contain object-center w-16 h-16 mb-8"
-          :alt="`${t('empty.teams')}`"
-        />
-        <span class="mb-4 text-center">
-          {{ t("empty.teams") }}
-        </span>
         <HoppButtonSecondary
           :label="t('team.create_new')"
           filled
@@ -35,7 +28,7 @@
           :icon="IconPlus"
           @click="displayModalAdd(true)"
         />
-      </div>
+      </HoppSmartPlaceholder>
       <div v-else-if="!loading" class="flex flex-col">
         <div
           class="sticky top-0 z-10 flex items-center justify-between py-2 pl-2 mb-2 -top-2 bg-popover"
@@ -89,6 +82,7 @@ import { changeWorkspace, workspaceStatus$ } from "~/newstore/workspace"
 import { GetMyTeamsQuery } from "~/helpers/backend/graphql"
 import IconDone from "~icons/lucide/check"
 import { useLocalState } from "~/newstore/localstate"
+import { defineActionHandler } from "~/helpers/actions"
 
 const t = useI18n()
 const colorMode = useColorMode()
@@ -161,4 +155,14 @@ const displayModalAdd = (shouldDisplay: boolean) => {
   showModalAdd.value = shouldDisplay
   teamListadapter.fetchList()
 }
+
+defineActionHandler("modals.team.new", () => {
+  displayModalAdd(true)
+})
+
+defineActionHandler("workspace.switch.personal", switchToPersonalWorkspace)
+defineActionHandler("workspace.switch", ({ teamId }) => {
+  const team = myTeams.value.find((t) => t.id === teamId)
+  if (team) switchToTeamWorkspace(team)
+})
 </script>

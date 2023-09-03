@@ -10,6 +10,9 @@ import "virtual:windi.css"
 import "../assets/scss/themes.scss"
 import "../assets/scss/styles.scss"
 import "nprogress/nprogress.css"
+import "@fontsource-variable/inter"
+import "@fontsource-variable/material-symbols-rounded"
+import "@fontsource-variable/roboto-mono"
 
 import App from "./App.vue"
 
@@ -25,6 +28,7 @@ export function createHoppApp(el: string | Element, platformDef: PlatformDef) {
   performMigrations()
 
   HOPP_MODULES.forEach((mod) => mod.onVueAppInit?.(app))
+  platformDef.addedHoppModules?.forEach((mod) => mod.onVueAppInit?.(app))
 
   app.mount(el)
 
