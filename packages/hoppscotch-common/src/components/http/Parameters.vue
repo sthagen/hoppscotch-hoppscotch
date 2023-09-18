@@ -9,7 +9,7 @@
       <div class="flex">
         <HoppButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          to="https://docs.hoppscotch.io/documentation/getting-started/rest/using-parameters"
+          to="https://docs.hoppscotch.io/documentation/features/rest-api-testing"
           blank
           :title="t('app.wiki')"
           :icon="IconHelpCircle"
@@ -430,3 +430,9 @@ const getInspectorResult = (results: InspectorResult[], index: number) => {
   })
 }
 </script>
+
+<style lang="scss" scoped>
+:deep(.cm-panels) {
+  @apply top-upperTertiaryStickyFold #{!important};
+}
+</style>

@@ -1,7 +1,7 @@
 <template>
   <div ref="autoCompleteWrapper" class="autocomplete-wrapper">
     <div
-      class="absolute inset-0 flex flex-1 divide-x divide-dividerLight overflow-x-auto"
+      class="absolute inset-0 flex flex-1 divide-x divide-dividerLight overflow-x-auto no-scrollbar"
     >
       <div
         ref="editor"
@@ -151,6 +151,22 @@ const updateModelValue = (value: string) => {
     showSuggestionPopover.value = false
   })
 }
+
+// close the context menu when the input is empty
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (!newVal) {
+      invokeAction("contextmenu.open", {
+        position: {
+          top: 0,
+          left: 0,
+        },
+        text: null,
+      })
+    }
+  }
+)
 
 const handleKeystroke = (ev: KeyboardEvent) => {
   if (["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(ev.key)) {
@@ -311,35 +327,35 @@ const envVars = computed(() =>
 
 const envTooltipPlugin = new HoppReactiveEnvPlugin(envVars, view)
 
-const initView = (el: any) => {
-  function handleTextSelection() {
-    const selection = view.value?.state.selection.main
-    if (selection) {
-      const from = selection.from
-      const to = selection.to
-      const text = view.value?.state.doc.sliceString(from, to)
-      const { top, left } = view.value?.coordsAtPos(from)
-      if (text) {
-        invokeAction("contextmenu.open", {
-          position: {
-            top,
-            left,
-          },
-          text,
-        })
-        showSuggestionPopover.value = false
-      } else {
-        invokeAction("contextmenu.open", {
-          position: {
-            top,
-            left,
-          },
-          text: null,
-        })
-      }
+function handleTextSelection() {
+  const selection = view.value?.state.selection.main
+  if (selection) {
+    const { from, to } = selection
+    if (from === to) return
+    const text = view.value?.state.doc.sliceString(from, to)
+    const { top, left } = view.value?.coordsAtPos(from)
+    if (text) {
+      invokeAction("contextmenu.open", {
+        position: {
+          top,
+          left,
+        },
+        text,
+      })
+      showSuggestionPopover.value = false
+    } else {
+      invokeAction("contextmenu.open", {
+        position: {
+          top,
+          left,
+        },
+        text: null,
+      })
     }
   }
+}
 
+const initView = (el: any) => {
   // Debounce to prevent double click from selecting the word
   const debounceFn = useDebounceFn(() => {
     handleTextSelection()
@@ -380,6 +396,11 @@ const initView = (el: any) => {
       },
       drop(ev) {
         ev.preventDefault()
+      },
+      scroll(event) {
+        if (event.target) {
+          handleTextSelection()
+        }
       },
     }),
     ViewPlugin.fromClass(

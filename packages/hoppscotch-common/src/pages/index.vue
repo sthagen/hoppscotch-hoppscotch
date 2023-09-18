@@ -141,6 +141,7 @@ import { InspectionService } from "~/services/inspection"
 import { HeaderInspectorService } from "~/services/inspection/inspectors/header.inspector"
 import { EnvironmentInspectorService } from "~/services/inspection/inspectors/environment.inspector"
 import { ResponseInspectorService } from "~/services/inspection/inspectors/response.inspector"
+import { cloneDeep } from "lodash-es"
 
 const savingRequest = ref(false)
 const confirmingCloseForTabID = ref<string | null>(null)
@@ -228,11 +229,14 @@ const removeTab = (tabID: string) => {
 }
 
 const closeOtherTabsAction = (tabID: string) => {
+  const isTabDirty = getTabRef(tabID).value?.document.isDirty
   const dirtyTabCount = getDirtyTabsCount()
+  // If current tab is dirty, so we need to subtract 1 from the dirty tab count
+  const balanceDirtyTabCount = isTabDirty ? dirtyTabCount - 1 : dirtyTabCount
   // If there are dirty tabs, show the confirm modal
-  if (dirtyTabCount > 0) {
+  if (balanceDirtyTabCount > 0) {
     confirmingCloseAllTabs.value = true
-    unsavedTabsCount.value = dirtyTabCount
+    unsavedTabsCount.value = balanceDirtyTabCount
     exceptedTabID.value = tabID
   } else {
     closeOtherTabs(tabID)
@@ -243,7 +247,7 @@ const duplicateTab = (tabID: string) => {
   const tab = getTabRef(tabID)
   if (tab.value) {
     const newTab = createNewTab({
-      request: tab.value.document.request,
+      request: cloneDeep(tab.value.document.request),
       isDirty: true,
     })
     currentTabID.value = newTab.id

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="container space-y-8 divide-y divide-dividerLight">
+    <div class="container divide-y divide-dividerLight">
       <div class="md:grid md:gap-4 md:grid-cols-3">
         <div class="p-8 md:col-span-1">
           <h3 class="heading">
@@ -34,14 +34,6 @@
             </div>
             <div class="mt-4">
               <SmartAccentModePicker />
-            </div>
-          </section>
-          <section>
-            <h4 class="font-semibold text-secondaryDark">
-              {{ t("settings.font_size") }}
-            </h4>
-            <div class="mt-4">
-              <SmartFontSizePicker />
             </div>
           </section>
           <section>
@@ -88,14 +80,6 @@
                   @change="toggleSetting('SIDEBAR_ON_LEFT')"
                 >
                   {{ t("settings.sidebar_on_left") }}
-                </HoppSmartToggle>
-              </div>
-              <div class="flex items-center">
-                <HoppSmartToggle
-                  :on="ZEN_MODE"
-                  @change="toggleSetting('ZEN_MODE')"
-                >
-                  {{ t("layout.zen_mode") }}
                 </HoppSmartToggle>
               </div>
             </div>
@@ -178,17 +162,12 @@ const PROXY_URL = useSetting("PROXY_URL")
 const TELEMETRY_ENABLED = useSetting("TELEMETRY_ENABLED")
 const EXPAND_NAVIGATION = useSetting("EXPAND_NAVIGATION")
 const SIDEBAR_ON_LEFT = useSetting("SIDEBAR_ON_LEFT")
-const ZEN_MODE = useSetting("ZEN_MODE")
 
 const confirmRemove = ref(false)
 
 const proxySettings = computed(() => ({
   url: PROXY_URL.value,
 }))
-
-watch(ZEN_MODE, (mode) => {
-  applySetting("EXPAND_NAVIGATION", !mode)
-})
 
 watch(
   proxySettings,

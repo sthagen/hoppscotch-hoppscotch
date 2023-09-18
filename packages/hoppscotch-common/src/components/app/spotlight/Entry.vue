@@ -119,5 +119,8 @@ watch(
   &.active {
     @apply after:bg-accentLight;
   }
+
+  scroll-padding: 4rem !important;
+  scroll-margin: 4rem !important;
 }
 </style>
