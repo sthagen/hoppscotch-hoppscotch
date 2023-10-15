@@ -25,7 +25,7 @@
         <HoppButtonSecondary
           v-if="!saveRequest"
           v-tippy="{ theme: 'tooltip' }"
-          :icon="IconArchive"
+          :icon="IconImport"
           :title="t('modal.import_export')"
           @click="emit('display-modal-import-export')"
         />
@@ -257,12 +257,27 @@
             :alt="`${t('empty.collections')}`"
             :text="t('empty.collections')"
           >
-            <HoppButtonSecondary
-              :label="t('add.new')"
-              filled
-              outline
-              @click="emit('display-modal-add')"
-            />
+            <div class="flex flex-col items-center space-y-4">
+              <span class="text-secondaryLight text-center">
+                {{ t("collection.import_or_create") }}
+              </span>
+              <div class="flex gap-4 flex-col items-stretch">
+                <HoppButtonPrimary
+                  :icon="IconImport"
+                  :label="t('import.title')"
+                  filled
+                  outline
+                  @click="emit('display-modal-import-export')"
+                />
+                <HoppButtonSecondary
+                  :icon="IconPlus"
+                  :label="t('add.new')"
+                  filled
+                  outline
+                  @click="emit('display-modal-add')"
+                />
+              </div>
+            </div>
           </HoppSmartPlaceholder>
           <HoppSmartPlaceholder
             v-else-if="node.data.type === 'collections'"
@@ -288,8 +303,7 @@
             :src="`/images/states/${colorMode.value}/pack.svg`"
             :alt="`${t('empty.folder')}`"
             :text="t('empty.folder')"
-          >
-          </HoppSmartPlaceholder>
+          />
         </template>
       </HoppSmartTree>
     </div>
@@ -297,9 +311,9 @@
 </template>
 
 <script setup lang="ts">
-import IconArchive from "~icons/lucide/archive"
 import IconPlus from "~icons/lucide/plus"
 import IconHelpCircle from "~icons/lucide/help-circle"
+import IconImport from "~icons/lucide/folder-down"
 import { HoppCollection, HoppRESTRequest } from "@hoppscotch/data"
 import { computed, PropType, Ref, toRef } from "vue"
 import { GetMyTeamsQuery } from "~/helpers/backend/graphql"
@@ -312,7 +326,8 @@ import { useColorMode } from "@composables/theming"
 import { pipe } from "fp-ts/function"
 import * as O from "fp-ts/Option"
 import { Picked } from "~/helpers/types/HoppPicked.js"
-import { currentActiveTab } from "~/helpers/rest/tab"
+import { useService } from "dioc/vue"
+import { RESTTabService } from "~/services/tab/rest"
 
 export type Collection = {
   type: "collections"
@@ -520,7 +535,8 @@ const isSelected = ({
   }
 }
 
-const active = computed(() => currentActiveTab.value.document.saveContext)
+const tabs = useService(RESTTabService)
+const active = computed(() => tabs.currentActiveTab.value.document.saveContext)
 
 const isActiveRequest = (folderPath: string, requestIndex: number) => {
   return pipe(

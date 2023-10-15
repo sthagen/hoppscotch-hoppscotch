@@ -185,18 +185,24 @@
             <span>
               <HoppButtonSecondary
                 v-if="header.source === 'auth'"
+                v-tippy="{ theme: 'tooltip' }"
+                :title="t(masking ? 'state.show' : 'state.hide')"
                 :icon="masking ? IconEye : IconEyeOff"
                 @click="toggleMask()"
               />
               <HoppButtonSecondary
                 v-else
+                v-tippy="{ theme: 'tooltip' }"
                 :icon="IconArrowUpRight"
+                :title="t('request.go_to_authorization_tab')"
                 class="cursor-auto text-primary hover:text-primary"
               />
             </span>
             <span>
               <HoppButtonSecondary
+                v-tippy="{ theme: 'tooltip' }"
                 :icon="IconArrowUpRight"
+                :title="t('request.go_to_authorization_tab')"
                 @click="changeTab(header.source)"
               />
             </span>
@@ -267,10 +273,13 @@ import { aggregateEnvs$, getAggregateEnvs } from "~/newstore/environments"
 import { useVModel } from "@vueuse/core"
 import { useService } from "dioc/vue"
 import { InspectionService, InspectorResult } from "~/services/inspection"
-import { currentTabID } from "~/helpers/rest/tab"
+import { RESTTabService } from "~/services/tab/rest"
 
 const t = useI18n()
 const toast = useToast()
+
+const tabs = useService(RESTTabService)
+
 const colorMode = useColorMode()
 
 const idTicker = ref(0)
@@ -509,13 +518,13 @@ const changeTab = (tab: ComputedHeader["source"]) => {
 const inspectionService = useService(InspectionService)
 
 const headerKeyResults = inspectionService.getResultViewFor(
-  currentTabID.value,
+  tabs.currentTabID.value,
   (result) =>
     result.locations.type === "header" && result.locations.position === "key"
 )
 
 const headerValueResults = inspectionService.getResultViewFor(
-  currentTabID.value,
+  tabs.currentTabID.value,
   (result) =>
     result.locations.type === "header" && result.locations.position === "value"
 )

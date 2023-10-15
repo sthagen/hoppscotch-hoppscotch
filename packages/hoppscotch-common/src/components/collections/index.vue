@@ -220,12 +220,6 @@ import * as E from "fp-ts/Either"
 import { platform } from "~/platform"
 import { createCollectionGists } from "~/helpers/gist"
 import {
-  createNewTab,
-  currentActiveTab,
-  currentTabID,
-  getTabRefWithSaveContext,
-} from "~/helpers/rest/tab"
-import {
   getRequestsByPath,
   resolveSaveContextOnRequestReorder,
 } from "~/helpers/collection/request"
@@ -239,9 +233,11 @@ import { currentReorderingStatus$ } from "~/newstore/reordering"
 import { defineActionHandler } from "~/helpers/actions"
 import { WorkspaceService } from "~/services/workspace.service"
 import { useService } from "dioc/vue"
+import { RESTTabService } from "~/services/tab/rest"
 
 const t = useI18n()
 const toast = useToast()
+const tabs = useService(RESTTabService)
 
 const props = defineProps({
   saveRequest: {
@@ -377,22 +373,26 @@ const updateSelectedTeam = (team: SelectedTeam) => {
 const workspace = workspaceService.currentWorkspace
 
 // Used to switch collection type and team when user switch workspace in the global workspace switcher
-// Check if there is a teamID in the workspace, if yes, switch to team collection and select the team
-// If there is no teamID, switch to my environment
+// Check if there is a teamID in the workspace, if yes, switch to team collections and select the team
+// If there is no teamID, switch to my collections
 watch(
   () => {
     const space = workspace.value
-
-    if (space.type === "personal") return undefined
-    else return space.teamID
+    return space.type === "personal" ? undefined : space.teamID
   },
   (teamID) => {
-    if (!teamID) {
-      switchToMyCollections()
-    } else if (teamID) {
+    if (teamID) {
       const team = myTeams.value?.find((t) => t.id === teamID)
-      if (team) updateSelectedTeam(team)
+      if (team) {
+        updateSelectedTeam(team)
+      }
+      return
     }
+
+    return switchToMyCollections()
+  },
+  {
+    immediate: true,
   }
 )
 
@@ -650,7 +650,7 @@ const addRequest = (payload: {
 
 const onAddRequest = (requestName: string) => {
   const newRequest = {
-    ...cloneDeep(currentActiveTab.value.document.request),
+    ...cloneDeep(tabs.currentActiveTab.value.document.request),
     name: requestName,
   }
 
@@ -659,7 +659,7 @@ const onAddRequest = (requestName: string) => {
     if (!path) return
     const insertionIndex = saveRESTRequestAs(path, newRequest)
 
-    createNewTab({
+    tabs.createNewTab({
       request: newRequest,
       isDirty: false,
       saveContext: {
@@ -708,7 +708,7 @@ const onAddRequest = (requestName: string) => {
         (result) => {
           const { createRequestInCollection } = result
 
-          createNewTab({
+          tabs.createNewTab({
             request: newRequest,
             isDirty: false,
             saveContext: {
@@ -931,7 +931,7 @@ const updateEditingRequest = (newName: string) => {
 
     if (folderPath === null || requestIndex === null) return
 
-    const possibleActiveTab = getTabRefWithSaveContext({
+    const possibleActiveTab = tabs.getTabRefWithSaveContext({
       originLocation: "user-collection",
       requestIndex,
       folderPath,
@@ -975,7 +975,7 @@ const updateEditingRequest = (newName: string) => {
       )
     )()
 
-    const possibleTab = getTabRefWithSaveContext({
+    const possibleTab = tabs.getTabRefWithSaveContext({
       originLocation: "team-collection",
       requestID,
     })
@@ -1211,7 +1211,7 @@ const onRemoveRequest = () => {
       emit("select", null)
     }
 
-    const possibleTab = getTabRefWithSaveContext({
+    const possibleTab = tabs.getTabRefWithSaveContext({
       originLocation: "user-collection",
       folderPath,
       requestIndex,
@@ -1271,7 +1271,7 @@ const onRemoveRequest = () => {
     )()
 
     // If there is a tab attached to this request, dissociate its state and mark it dirty
-    const possibleTab = getTabRefWithSaveContext({
+    const possibleTab = tabs.getTabRefWithSaveContext({
       originLocation: "team-collection",
       requestID,
     })
@@ -1304,14 +1304,14 @@ const selectRequest = (selectedRequest: {
   let possibleTab = null
 
   if (collectionsType.value.type === "team-collections") {
-    possibleTab = getTabRefWithSaveContext({
+    possibleTab = tabs.getTabRefWithSaveContext({
       originLocation: "team-collection",
       requestID: requestIndex,
     })
     if (possibleTab) {
-      currentTabID.value = possibleTab.value.id
+      tabs.setActiveTab(possibleTab.value.id)
     } else {
-      createNewTab({
+      tabs.createNewTab({
         request: cloneDeep(request),
         isDirty: false,
         saveContext: {
@@ -1321,16 +1321,16 @@ const selectRequest = (selectedRequest: {
       })
     }
   } else {
-    possibleTab = getTabRefWithSaveContext({
+    possibleTab = tabs.getTabRefWithSaveContext({
       originLocation: "user-collection",
       requestIndex: parseInt(requestIndex),
       folderPath: folderPath!,
     })
     if (possibleTab) {
-      currentTabID.value = possibleTab.value.id
+      tabs.setActiveTab(possibleTab.value.id)
     } else {
       // If not, open the request in a new tab
-      createNewTab({
+      tabs.createNewTab({
         request: cloneDeep(request),
         isDirty: false,
         saveContext: {
@@ -1373,7 +1373,7 @@ const dropRequest = (payload: {
       destinationCollectionIndex
     )
 
-    const possibleTab = getTabRefWithSaveContext({
+    const possibleTab = tabs.getTabRefWithSaveContext({
       originLocation: "user-collection",
       folderPath,
       requestIndex: pathToLastIndex(requestIndex),
@@ -1422,7 +1422,7 @@ const dropRequest = (payload: {
             1
           )
 
-          const possibleTab = getTabRefWithSaveContext({
+          const possibleTab = tabs.getTabRefWithSaveContext({
             originLocation: "team-collection",
             requestID: requestIndex,
           })
@@ -1937,6 +1937,12 @@ const exportJSONCollection = async () => {
   })
 
   await getJSONCollection()
+
+  const parsedCollections = JSON.parse(collectionJSON.value)
+
+  if (!parsedCollections.length) {
+    return toast.error(t("error.no_collections_to_export"))
+  }
 
   initializeDownloadCollection(collectionJSON.value, null)
 }
