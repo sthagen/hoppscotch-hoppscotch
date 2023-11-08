@@ -18,13 +18,12 @@
       "
     >
       <WorkspaceCurrent :section="t('tab.collections')" />
-
-      <HoppSmartInput
+      <input
         v-model="filterTexts"
-        :placeholder="t('action.search')"
-        input-styles="py-2 pl-4 pr-2 bg-transparent !border-0"
         type="search"
-        :autofocus="false"
+        autocomplete="off"
+        class="flex w-full p-4 py-2 bg-transparent h-8"
+        :placeholder="t('action.search')"
         :disabled="collectionsType.type === 'team-collections'"
       />
     </div>
@@ -1867,28 +1866,25 @@ const getJSONCollection = async () => {
  * @param collectionJSON - JSON string of the collection
  * @param name - Name of the collection set as the file name
  */
-const initializeDownloadCollection = (
+const initializeDownloadCollection = async (
   collectionJSON: string,
   name: string | null
 ) => {
-  const file = new Blob([collectionJSON], { type: "application/json" })
-  const a = document.createElement("a")
-  const url = URL.createObjectURL(file)
-  a.href = url
+  const result = await platform.io.saveFileWithDialog({
+    data: collectionJSON,
+    contentType: "application/json",
+    suggestedFilename: `${name ?? "collection"}.json`,
+    filters: [
+      {
+        name: "Hoppscotch Collection JSON file",
+        extensions: ["json"],
+      },
+    ],
+  })
 
-  if (name) {
-    a.download = `${name}.json`
-  } else {
-    a.download = `${url.split("/").pop()!.split("#")[0].split("?")[0]}.json`
+  if (result.type === "unknown" || result.type === "saved") {
+    toast.success(t("state.download_started").toString())
   }
-
-  document.body.appendChild(a)
-  a.click()
-  toast.success(t("state.download_started").toString())
-  setTimeout(() => {
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, 1000)
 }
 
 /**
@@ -1917,11 +1913,14 @@ const exportData = async (
           exportLoading.value = false
           return
         },
-        (coll) => {
+        async (coll) => {
           const hoppColl = teamCollToHoppRESTColl(coll)
           const collectionJSONString = JSON.stringify(hoppColl)
 
-          initializeDownloadCollection(collectionJSONString, hoppColl.name)
+          await initializeDownloadCollection(
+            collectionJSONString,
+            hoppColl.name
+          )
           exportLoading.value = false
         }
       )
