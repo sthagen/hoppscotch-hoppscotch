@@ -425,7 +425,10 @@ export class PersistenceService extends Service {
 
     if (globalIndex !== -1) {
       const globalEnv = environmentsData[globalIndex]
-      globalEnv.variables.forEach((variable) => addGlobalEnvVariable(variable))
+      globalEnv.variables.forEach(
+        (variable: Environment["variables"][number]) =>
+          addGlobalEnvVariable(variable)
+      )
 
       // Remove global from environments
       environmentsData.splice(globalIndex, 1)
@@ -628,7 +631,7 @@ export class PersistenceService extends Service {
 
   private setupGlobalEnvsPersistence() {
     const globalEnvKey = "globalEnv"
-    let globalEnvData: Environment["variables"] = JSON.parse(
+    let globalEnvData: z.infer<typeof GLOBAL_ENV_SCHEMA> = JSON.parse(
       window.localStorage.getItem(globalEnvKey) || "[]"
     )
 
@@ -644,7 +647,7 @@ export class PersistenceService extends Service {
       )
     }
 
-    setGlobalEnvVariables(globalEnvData)
+    setGlobalEnvVariables(globalEnvData as Environment["variables"])
 
     globalEnv$.subscribe((vars) => {
       window.localStorage.setItem(globalEnvKey, JSON.stringify(vars))
