@@ -1,4 +1,4 @@
-import { ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, HttpException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { pipe } from 'fp-ts/lib/function';
@@ -16,6 +16,7 @@ import {
   JSON_INVALID,
 } from './errors';
 import { AuthProvider } from './auth/helper';
+import { RESTError } from './types/RESTError';
 
 /**
  * A workaround to throw an exception in an expression.
@@ -25,6 +26,15 @@ import { AuthProvider } from './auth/helper';
  */
 export function throwErr(errMessage: string): never {
   throw new Error(errMessage);
+}
+
+/**
+ * This function allows throw to be used as an expression
+ * @param errMessage Message present in the error message
+ */
+export function throwHTTPErr(errorData: RESTError): never {
+  const { message, statusCode } = errorData;
+  throw new HttpException(message, statusCode);
 }
 
 /**
@@ -174,6 +184,16 @@ export const validateSMTPUrl = (url: string) => {
 };
 
 /**
+ * Checks to see if the URL is valid or not
+ * @param url The URL to validate
+ * @returns boolean
+ */
+export const validateUrl = (url: string) => {
+  const urlRegex = /^(http|https):\/\/[^ "]+$/;
+  return urlRegex.test(url);
+};
+
+/**
  * String to JSON parser
  * @param {str} str The string to parse
  * @returns {E.Right<T> | E.Left<"json_invalid">} An Either of the parsed JSON
@@ -229,4 +249,40 @@ export function checkEnvironmentAuthProvider(
       throw new Error(ENV_NOT_SUPPORT_AUTH_PROVIDERS);
     }
   }
+}
+
+/**
+ * Adds escape backslashes to the input so that it can be used inside
+ * SQL LIKE/ILIKE queries. Inspired by PHP's `mysql_real_escape_string`
+ * function.
+ *
+ * Eg. "100%" -> "100\\%"
+ *
+ * Source: https://stackoverflow.com/a/32648526
+ */
+export function escapeSqlLikeString(str: string) {
+  if (typeof str != 'string') return str;
+
+  return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function (char) {
+    switch (char) {
+      case '\0':
+        return '\\0';
+      case '\x08':
+        return '\\b';
+      case '\x09':
+        return '\\t';
+      case '\x1a':
+        return '\\z';
+      case '\n':
+        return '\\n';
+      case '\r':
+        return '\\r';
+      case '"':
+      case "'":
+      case '\\':
+      case '%':
+        return '\\' + char; // prepends a backslash to backslash, percent,
+      // and double/single quotes
+    }
+  });
 }

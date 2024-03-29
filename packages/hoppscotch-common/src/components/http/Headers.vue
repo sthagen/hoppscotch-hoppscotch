@@ -26,7 +26,7 @@
           @click="clearContent()"
         />
         <HoppButtonSecondary
-          v-if="bulkMode"
+          v-if="bulkHeaders"
           v-tippy="{ theme: 'tooltip' }"
           :title="t('state.linewrap')"
           :class="{ '!text-accent': WRAP_LINES }"
@@ -92,6 +92,8 @@
               :auto-complete-source="commonHeaders"
               :env-index="index"
               :inspection-results="getInspectorResult(headerKeyResults, index)"
+              :auto-complete-env="true"
+              :envs="envs"
               @change="
                 updateHeader(index, {
                   id: header.id,
@@ -108,6 +110,8 @@
                 getInspectorResult(headerValueResults, index)
               "
               :env-index="index"
+              :auto-complete-env="true"
+              :envs="envs"
               @change="
                 updateHeader(index, {
                   id: header.id,
@@ -303,6 +307,7 @@ import { useColorMode } from "@composables/theming"
 import { computed, reactive, ref, watch } from "vue"
 import { isEqual, cloneDeep } from "lodash-es"
 import {
+  HoppRESTAuth,
   HoppRESTHeader,
   HoppRESTRequest,
   parseRawKeyValueEntriesE,
@@ -329,7 +334,11 @@ import {
   getComputedHeaders,
   getComputedAuthHeaders,
 } from "~/helpers/utils/EffectiveURL"
-import { aggregateEnvs$, getAggregateEnvs } from "~/newstore/environments"
+import {
+  AggregateEnvironment,
+  aggregateEnvs$,
+  getAggregateEnvs,
+} from "~/newstore/environments"
 import { useVModel } from "@vueuse/core"
 import { useService } from "dioc/vue"
 import { InspectionService, InspectorResult } from "~/services/inspection"
@@ -356,9 +365,15 @@ const deletionToast = ref<{ goAway: (delay: number) => void } | null>(null)
 
 // v-model integration with props and emit
 const props = defineProps<{
-  modelValue: HoppRESTRequest
+  modelValue:
+    | HoppRESTRequest
+    | {
+        headers: HoppRESTHeader[]
+        auth: HoppRESTAuth
+      }
   isCollectionProperty?: boolean
   inheritedProperties?: HoppInheritedProperty
+  envs?: AggregateEnvironment[]
 }>()
 
 const emit = defineEmits<{

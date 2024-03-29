@@ -1,19 +1,22 @@
-import { convert, ImportRequest } from "insomnia-importers"
-import { pipe } from "fp-ts/function"
 import {
+  HoppCollection,
   HoppRESTAuth,
   HoppRESTHeader,
   HoppRESTParam,
   HoppRESTReqBody,
   HoppRESTRequest,
   knownContentTypes,
-  makeRESTRequest,
-  HoppCollection,
   makeCollection,
+  makeRESTRequest,
+  HoppRESTRequestVariable,
 } from "@hoppscotch/data"
+
 import * as A from "fp-ts/Array"
-import * as TO from "fp-ts/TaskOption"
 import * as TE from "fp-ts/TaskEither"
+import * as TO from "fp-ts/TaskOption"
+import { pipe } from "fp-ts/function"
+import { ImportRequest, convert } from "insomnia-importers"
+
 import { IMPORTER_INVALID_FILE_FORMAT } from "."
 import { replaceInsomniaTemplating } from "./insomniaEnv"
 
@@ -26,14 +29,27 @@ type UnwrapPromise<T extends Promise<any>> = T extends Promise<infer Y>
 type InsomniaDoc = UnwrapPromise<ReturnType<typeof convert>>
 type InsomniaResource = ImportRequest
 
+// insomnia-importers v3.6.0 doesn't provide a type for path parameters and they have deprecated the library
+type InsomniaPathParameter = {
+  name: string
+  value: string
+}
+
 type InsomniaFolderResource = ImportRequest & { _type: "request_group" }
-type InsomniaRequestResource = ImportRequest & { _type: "request" }
+type InsomniaRequestResource = ImportRequest & {
+  _type: "request"
+} & {
+  pathParameters?: InsomniaPathParameter[]
+}
 
 const parseInsomniaDoc = (content: string) =>
   TO.tryCatch(() => convert(content))
 
+const replacePathVarTemplating = (expression: string) =>
+  expression.replaceAll(/:([^/]+)/g, "<<$1>>")
+
 const replaceVarTemplating = (expression: string) =>
-  replaceInsomniaTemplating(expression)
+  pipe(expression, replacePathVarTemplating, replaceInsomniaTemplating)
 
 const getFoldersIn = (
   folder: InsomniaFolderResource | null,
@@ -95,12 +111,16 @@ const getHoppReqAuth = (req: InsomniaRequestResource): HoppRESTAuth => {
     return {
       authType: "oauth-2",
       authActive: !(auth.disabled ?? false),
-      accessTokenURL: replaceVarTemplating(auth.accessTokenUrl ?? ""),
-      authURL: replaceVarTemplating(auth.authorizationUrl ?? ""),
-      clientID: replaceVarTemplating(auth.clientId ?? ""),
-      oidcDiscoveryURL: "",
-      scope: replaceVarTemplating(auth.scope ?? ""),
-      token: "",
+      grantTypeInfo: {
+        authEndpoint: replaceVarTemplating(auth.authorizationUrl ?? ""),
+        clientID: replaceVarTemplating(auth.clientId ?? ""),
+        clientSecret: "",
+        grantType: "AUTHORIZATION_CODE",
+        scopes: replaceVarTemplating(auth.scope ?? ""),
+        token: "",
+        isPKCE: false,
+        tokenEndpoint: replaceVarTemplating(auth.accessTokenUrl ?? ""),
+      },
     }
   else if (auth.type === "bearer")
     return {
@@ -175,6 +195,15 @@ const getHoppReqParams = (req: InsomniaRequestResource): HoppRESTParam[] =>
     active: !(param.disabled ?? false),
   })) ?? []
 
+const getHoppReqVariables = (
+  req: InsomniaRequestResource
+): HoppRESTRequestVariable[] =>
+  req.pathParameters?.map((variable) => ({
+    key: replaceVarTemplating(variable.name),
+    value: replaceVarTemplating(variable.value ?? ""),
+    active: true,
+  })) ?? []
+
 const getHoppRequest = (req: InsomniaRequestResource): HoppRESTRequest =>
   makeRESTRequest({
     name: req.name ?? "Untitled Request",
@@ -187,6 +216,8 @@ const getHoppRequest = (req: InsomniaRequestResource): HoppRESTRequest =>
 
     preRequestScript: "",
     testScript: "",
+
+    requestVariables: getHoppReqVariables(req),
   })
 
 const getHoppFolder = (
@@ -203,15 +234,18 @@ const getHoppFolder = (
     headers: [],
   })
 
-const getHoppCollections = (doc: InsomniaDoc) =>
-  getFoldersIn(null, doc.data.resources).map((f) =>
-    getHoppFolder(f, doc.data.resources)
-  )
+const getHoppCollections = (docs: InsomniaDoc[]) => {
+  return docs.flatMap((doc) => {
+    return getFoldersIn(null, doc.data.resources).map((f) =>
+      getHoppFolder(f, doc.data.resources)
+    )
+  })
+}
 
-export const hoppInsomniaImporter = (fileContent: string) =>
+export const hoppInsomniaImporter = (fileContents: string[]) =>
   pipe(
-    fileContent,
-    parseInsomniaDoc,
+    fileContents,
+    A.traverse(TO.ApplicativeSeq)(parseInsomniaDoc),
     TO.map(getHoppCollections),
     TE.fromTaskOption(() => IMPORTER_INVALID_FILE_FORMAT)
   )

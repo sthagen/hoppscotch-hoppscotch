@@ -1,9 +1,9 @@
 import { HoppCollection, HoppRESTRequest } from "@hoppscotch/data";
-import { bold } from "chalk";
+import chalk from "chalk";
 import { log } from "console";
 import * as A from "fp-ts/Array";
 import { pipe } from "fp-ts/function";
-import round from "lodash/round";
+import { round } from "lodash-es";
 
 import { CollectionRunnerParam } from "../types/collections";
 import {
@@ -68,7 +68,7 @@ export const collectionsRunner = async (
         };
 
         // Request processing initiated message.
-        log(WARN(`\nRunning: ${bold(requestPath)}`));
+        log(WARN(`\nRunning: ${chalk.bold(requestPath)}`));
 
       // Processing current request.
       const result = await processRequest(processRequestParams)();
@@ -131,7 +131,7 @@ const getCollectionStack = (collections: HoppCollection[]): CollectionStack[] =>
  * path of each request within collection-json file, failed-tests-report, errors,
  * total execution duration for requests, pre-request-scripts, test-scripts.
  * @returns True, if collection runner executed without any errors or failed test-cases.
- * False, if errors occured or test-cases failed.
+ * False, if errors occurred or test-cases failed.
  */
 export const collectionsRunnerResult = (
   requestsReport: RequestReport[]

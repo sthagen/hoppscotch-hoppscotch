@@ -5,6 +5,7 @@ import {
   QueryParam,
   RequestAuthDefinition,
   VariableDefinition,
+  Variable,
 } from "postman-collection"
 import {
   HoppRESTAuth,
@@ -18,6 +19,7 @@ import {
   ValidContentTypes,
   knownContentTypes,
   FormDataKeyValue,
+  HoppRESTRequestVariable,
 } from "@hoppscotch/data"
 import { pipe, flow } from "fp-ts/function"
 import * as S from "fp-ts/string"
@@ -55,7 +57,11 @@ const readPMCollection = (def: string) =>
   pipe(
     def,
     safeParseJSON,
-    O.chain((data) => O.tryCatch(() => new PMCollection(data)))
+    O.chain((data) =>
+      O.tryCatch(() => {
+        return new PMCollection(data)
+      })
+    )
   )
 
 const getHoppReqHeaders = (item: Item): HoppRESTHeader[] =>
@@ -82,6 +88,25 @@ const getHoppReqParams = (item: Item): HoppRESTParam[] => {
         key: replacePMVarTemplating(param.key),
         value: replacePMVarTemplating(param.value ?? ""),
         active: !param.disabled,
+      }
+    })
+  )
+}
+
+const getHoppReqVariables = (item: Item) => {
+  return pipe(
+    item.request.url.variables.all(),
+    A.filter(
+      (variable): variable is Variable =>
+        variable.key !== undefined &&
+        variable.key !== null &&
+        variable.key.length > 0
+    ),
+    A.map((variable) => {
+      return <HoppRESTRequestVariable>{
+        key: replacePMVarTemplating(variable.key ?? ""),
+        value: replacePMVarTemplating(variable.value ?? ""),
+        active: !variable.disabled,
       }
     })
   )
@@ -137,25 +162,36 @@ const getHoppReqAuth = (item: Item): HoppRESTAuth => {
       ),
     }
   } else if (auth.type === "oauth2") {
+    const accessTokenURL = replacePMVarTemplating(
+      getVariableValue(auth.oauth2, "accessTokenUrl") ?? ""
+    )
+    const authURL = replacePMVarTemplating(
+      getVariableValue(auth.oauth2, "authUrl") ?? ""
+    )
+    const clientId = replacePMVarTemplating(
+      getVariableValue(auth.oauth2, "clientId") ?? ""
+    )
+    const scope = replacePMVarTemplating(
+      getVariableValue(auth.oauth2, "scope") ?? ""
+    )
+    const token = replacePMVarTemplating(
+      getVariableValue(auth.oauth2, "accessToken") ?? ""
+    )
+
     return {
       authType: "oauth-2",
       authActive: true,
-      accessTokenURL: replacePMVarTemplating(
-        getVariableValue(auth.oauth2, "accessTokenUrl") ?? ""
-      ),
-      authURL: replacePMVarTemplating(
-        getVariableValue(auth.oauth2, "authUrl") ?? ""
-      ),
-      clientID: replacePMVarTemplating(
-        getVariableValue(auth.oauth2, "clientId") ?? ""
-      ),
-      scope: replacePMVarTemplating(
-        getVariableValue(auth.oauth2, "scope") ?? ""
-      ),
-      token: replacePMVarTemplating(
-        getVariableValue(auth.oauth2, "accessToken") ?? ""
-      ),
-      oidcDiscoveryURL: "",
+      grantTypeInfo: {
+        grantType: "AUTHORIZATION_CODE",
+        authEndpoint: authURL,
+        clientID: clientId,
+        scopes: scope,
+        token: token,
+        tokenEndpoint: accessTokenURL,
+        clientSecret: "",
+        isPKCE: false,
+      },
+      addTo: "HEADERS",
     }
   }
 
@@ -276,6 +312,7 @@ const getHoppRequest = (item: Item): HoppRESTRequest => {
     params: getHoppReqParams(item),
     auth: getHoppReqAuth(item),
     body: getHoppReqBody(item),
+    requestVariables: getHoppReqVariables(item),
 
     // TODO: Decide about this
     preRequestScript: "",
@@ -296,15 +333,17 @@ const getHoppFolder = (ig: ItemGroup<Item>): HoppCollection =>
     headers: [],
   })
 
-export const getHoppCollection = (coll: PMCollection) => getHoppFolder(coll)
+export const getHoppCollections = (collections: PMCollection[]) => {
+  return collections.map(getHoppFolder)
+}
 
-export const hoppPostmanImporter = (fileContent: string) =>
+export const hoppPostmanImporter = (fileContents: string[]) =>
   pipe(
     // Try reading
-    fileContent,
-    readPMCollection,
+    fileContents,
+    A.traverse(O.Applicative)(readPMCollection),
 
-    O.map(flow(getHoppCollection, A.of)),
+    O.map(flow(getHoppCollections)),
 
     TE.fromOption(() => IMPORTER_INVALID_FILE_FORMAT)
   )

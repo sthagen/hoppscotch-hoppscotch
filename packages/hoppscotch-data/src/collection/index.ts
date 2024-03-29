@@ -8,8 +8,7 @@ import { translateToNewRequest } from "../rest"
 import { translateToGQLRequest } from "../graphql"
 
 const versionedObject = z.object({
-  // v is a stringified number
-  v: z.string().regex(/^\d+$/).transform(Number),
+  v: z.number(),
 })
 
 export const HoppCollection = createVersionedEntity({
@@ -26,7 +25,7 @@ export const HoppCollection = createVersionedEntity({
     // For V1 we have to check the schema
     const result = V1_VERSION.schema.safeParse(data)
 
-    return result.success ? 0 : null
+    return result.success ? 1 : null
   },
 })
 
@@ -52,8 +51,6 @@ export function makeCollection(x: Omit<HoppCollection, "v">): HoppCollection {
  * @returns The proper new collection format
  */
 export function translateToNewRESTCollection(x: any): HoppCollection {
-  if (x.v && x.v === CollectionSchemaVersion) return x
-
   // Legacy
   const name = x.name ?? "Untitled"
   const folders = (x.folders ?? []).map(translateToNewRESTCollection)
@@ -81,8 +78,6 @@ export function translateToNewRESTCollection(x: any): HoppCollection {
  * @returns The proper new collection format
  */
 export function translateToNewGQLCollection(x: any): HoppCollection {
-  if (x.v && x.v === CollectionSchemaVersion) return x
-
   // Legacy
   const name = x.name ?? "Untitled"
   const folders = (x.folders ?? []).map(translateToNewGQLCollection)

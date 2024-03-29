@@ -22,6 +22,7 @@ import {
   EnableAndDisableSsoDocument,
   ResetInfraConfigsDocument,
   UpdateInfraConfigsDocument,
+  ToggleAnalyticsCollectionDocument,
 } from '~/helpers/backend/graphql';
 
 const t = useI18n();
@@ -43,10 +44,17 @@ const updateInfraConfigsMutation = useMutation(UpdateInfraConfigsDocument);
 const updateAllowedAuthProviderMutation = useMutation(
   EnableAndDisableSsoDocument
 );
+const toggleDataSharingMutation = useMutation(
+  ToggleAnalyticsCollectionDocument
+);
 
 // Mutation handlers
-const { updateInfraConfigs, updateAuthProvider, resetInfraConfigs } =
-  useConfigHandler(props.workingConfigs);
+const {
+  updateInfraConfigs,
+  updateAuthProvider,
+  resetInfraConfigs,
+  updateDataSharingConfigs,
+} = useConfigHandler(props.workingConfigs);
 
 // Call relevant mutations on component mount and initiate server restart
 const duration = ref(30);
@@ -72,13 +80,20 @@ onMounted(async () => {
     success = await resetInfraConfigs(resetInfraConfigsMutation);
     if (!success) return;
   } else {
+    const infraResult = await updateInfraConfigs(updateInfraConfigsMutation);
+
+    if (!infraResult) return;
+
     const authResult = await updateAuthProvider(
       updateAllowedAuthProviderMutation
     );
-    const infraResult = await updateInfraConfigs(updateInfraConfigsMutation);
+    if (!authResult) return;
 
-    success = authResult && infraResult;
-    if (!success) return;
+    const dataSharingResult = await updateDataSharingConfigs(
+      toggleDataSharingMutation
+    );
+
+    if (!dataSharingResult) return;
   }
 
   restart.value = true;

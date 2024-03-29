@@ -1,19 +1,20 @@
-import { computed, onMounted, ref } from 'vue';
+import { AnyVariables, UseMutationResponse } from '@urql/vue';
 import { cloneDeep } from 'lodash-es';
-import { UseMutationResponse } from '@urql/vue';
-import { useClientHandler } from './useClientHandler';
-import { useToast } from './toast';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '~/composables/i18n';
 import {
+  AllowedAuthProvidersDocument,
+  EnableAndDisableSsoArgs,
+  EnableAndDisableSsoMutation,
+  InfraConfigArgs,
   InfraConfigEnum,
   InfraConfigsDocument,
-  AllowedAuthProvidersDocument,
-  EnableAndDisableSsoMutation,
-  UpdateInfraConfigsMutation,
   ResetInfraConfigsMutation,
-  EnableAndDisableSsoArgs,
-  InfraConfigArgs,
+  ToggleAnalyticsCollectionMutation,
+  UpdateInfraConfigsMutation,
 } from '~/helpers/backend/graphql';
+import { useToast } from './toast';
+import { useClientHandler } from './useClientHandler';
 
 // Types
 export type SsoAuthProviders = 'google' | 'microsoft' | 'github';
@@ -26,6 +27,8 @@ export type Config = {
       fields: {
         client_id: string;
         client_secret: string;
+        callback_url: string;
+        scope: string;
       };
     };
     github: {
@@ -34,6 +37,8 @@ export type Config = {
       fields: {
         client_id: string;
         client_secret: string;
+        callback_url: string;
+        scope: string;
       };
     };
     microsoft: {
@@ -42,6 +47,9 @@ export type Config = {
       fields: {
         client_id: string;
         client_secret: string;
+        callback_url: string;
+        scope: string;
+        tenant: string;
       };
     };
   };
@@ -53,6 +61,11 @@ export type Config = {
       mailer_smtp_url: string;
       mailer_from_address: string;
     };
+  };
+
+  dataSharingConfigs: {
+    name: string;
+    enabled: boolean;
   };
 };
 
@@ -72,31 +85,43 @@ export function useConfigHandler(updatedConfigs?: Config) {
   const {
     fetching: fetchingInfraConfigs,
     error: infraConfigsError,
-    list: infraConfigs,
-    fetchList: fetchInfraConfigs,
-  } = useClientHandler(InfraConfigsDocument, (x) => x.infraConfigs, {
-    configNames: [
-      'GOOGLE_CLIENT_ID',
-      'GOOGLE_CLIENT_SECRET',
-      'MICROSOFT_CLIENT_ID',
-      'MICROSOFT_CLIENT_SECRET',
-      'GITHUB_CLIENT_ID',
-      'GITHUB_CLIENT_SECRET',
-      'MAILER_SMTP_URL',
-      'MAILER_ADDRESS_FROM',
-    ] as InfraConfigEnum[],
-  });
+    dataAsList: infraConfigs,
+    fetchData: fetchInfraConfigs,
+  } = useClientHandler(
+    InfraConfigsDocument,
+    {
+      configNames: [
+        'GOOGLE_CLIENT_ID',
+        'GOOGLE_CLIENT_SECRET',
+        'GOOGLE_CALLBACK_URL',
+        'GOOGLE_SCOPE',
+        'MICROSOFT_CLIENT_ID',
+        'MICROSOFT_CLIENT_SECRET',
+        'MICROSOFT_CALLBACK_URL',
+        'MICROSOFT_SCOPE',
+        'MICROSOFT_TENANT',
+        'GITHUB_CLIENT_ID',
+        'GITHUB_CLIENT_SECRET',
+        'GITHUB_CALLBACK_URL',
+        'GITHUB_SCOPE',
+        'MAILER_SMTP_URL',
+        'MAILER_ADDRESS_FROM',
+        'ALLOW_ANALYTICS_COLLECTION',
+      ] as InfraConfigEnum[],
+    },
+    (x) => x.infraConfigs
+  );
 
   // Fetching allowed auth providers
   const {
     fetching: fetchingAllowedAuthProviders,
     error: allowedAuthProvidersError,
-    list: allowedAuthProviders,
-    fetchList: fetchAllowedAuthProviders,
+    dataAsList: allowedAuthProviders,
+    fetchData: fetchAllowedAuthProviders,
   } = useClientHandler(
     AllowedAuthProvidersDocument,
-    (x) => x.allowedAuthProviders,
-    {}
+    {},
+    (x) => x.allowedAuthProviders
   );
 
   // Current and working configs
@@ -107,6 +132,9 @@ export function useConfigHandler(updatedConfigs?: Config) {
     await fetchInfraConfigs();
     await fetchAllowedAuthProviders();
 
+    const getFieldValue = (name: string) =>
+      infraConfigs.value.find((x) => x.name === name)?.value ?? '';
+
     // Transforming the fetched data into a Configs object
     currentConfigs.value = {
       providers: {
@@ -114,37 +142,31 @@ export function useConfigHandler(updatedConfigs?: Config) {
           name: 'google',
           enabled: allowedAuthProviders.value.includes('GOOGLE'),
           fields: {
-            client_id:
-              infraConfigs.value.find((x) => x.name === 'GOOGLE_CLIENT_ID')
-                ?.value ?? '',
-            client_secret:
-              infraConfigs.value.find((x) => x.name === 'GOOGLE_CLIENT_SECRET')
-                ?.value ?? '',
+            client_id: getFieldValue('GOOGLE_CLIENT_ID'),
+            client_secret: getFieldValue('GOOGLE_CLIENT_SECRET'),
+            callback_url: getFieldValue('GOOGLE_CALLBACK_URL'),
+            scope: getFieldValue('GOOGLE_SCOPE'),
           },
         },
         github: {
           name: 'github',
           enabled: allowedAuthProviders.value.includes('GITHUB'),
           fields: {
-            client_id:
-              infraConfigs.value.find((x) => x.name === 'GITHUB_CLIENT_ID')
-                ?.value ?? '',
-            client_secret:
-              infraConfigs.value.find((x) => x.name === 'GITHUB_CLIENT_SECRET')
-                ?.value ?? '',
+            client_id: getFieldValue('GITHUB_CLIENT_ID'),
+            client_secret: getFieldValue('GITHUB_CLIENT_SECRET'),
+            callback_url: getFieldValue('GITHUB_CALLBACK_URL'),
+            scope: getFieldValue('GITHUB_SCOPE'),
           },
         },
         microsoft: {
           name: 'microsoft',
           enabled: allowedAuthProviders.value.includes('MICROSOFT'),
           fields: {
-            client_id:
-              infraConfigs.value.find((x) => x.name === 'MICROSOFT_CLIENT_ID')
-                ?.value ?? '',
-            client_secret:
-              infraConfigs.value.find(
-                (x) => x.name === 'MICROSOFT_CLIENT_SECRET'
-              )?.value ?? '',
+            client_id: getFieldValue('MICROSOFT_CLIENT_ID'),
+            client_secret: getFieldValue('MICROSOFT_CLIENT_SECRET'),
+            callback_url: getFieldValue('MICROSOFT_CALLBACK_URL'),
+            scope: getFieldValue('MICROSOFT_SCOPE'),
+            tenant: getFieldValue('MICROSOFT_TENANT'),
           },
         },
       },
@@ -152,13 +174,15 @@ export function useConfigHandler(updatedConfigs?: Config) {
         name: 'email',
         enabled: allowedAuthProviders.value.includes('EMAIL'),
         fields: {
-          mailer_smtp_url:
-            infraConfigs.value.find((x) => x.name === 'MAILER_SMTP_URL')
-              ?.value ?? '',
-          mailer_from_address:
-            infraConfigs.value.find((x) => x.name === 'MAILER_ADDRESS_FROM')
-              ?.value ?? '',
+          mailer_smtp_url: getFieldValue('MAILER_SMTP_URL'),
+          mailer_from_address: getFieldValue('MAILER_ADDRESS_FROM'),
         },
+      },
+      dataSharingConfigs: {
+        name: 'data_sharing',
+        enabled: !!infraConfigs.value.find(
+          (x) => x.name === 'ALLOW_ANALYTICS_COLLECTION' && x.value === 'true'
+        ),
       },
     };
 
@@ -167,7 +191,7 @@ export function useConfigHandler(updatedConfigs?: Config) {
     workingConfigs.value = cloneDeep(currentConfigs.value);
   });
 
-  // Trasforming the working configs back into the format required by the mutations
+  // Transforming the working configs back into the format required by the mutations
   const updatedInfraConfigs = computed(() => {
     let config: UpdatedConfigs[] = [
       {
@@ -185,13 +209,23 @@ export function useConfigHandler(updatedConfigs?: Config) {
         {
           name: 'GOOGLE_CLIENT_SECRET',
           value: updatedConfigs?.providers.google.fields.client_secret ?? '',
+        },
+        {
+          name: 'GOOGLE_CALLBACK_URL',
+          value: updatedConfigs?.providers.google.fields.callback_url ?? '',
+        },
+        {
+          name: 'GOOGLE_SCOPE',
+          value: updatedConfigs?.providers.google.fields.scope ?? '',
         }
       );
     } else {
       config = config.filter(
         (item) =>
           item.name !== 'GOOGLE_CLIENT_ID' &&
-          item.name !== 'GOOGLE_CLIENT_SECRET'
+          item.name !== 'GOOGLE_CLIENT_SECRET' &&
+          item.name !== 'GOOGLE_CALLBACK_URL' &&
+          item.name !== 'GOOGLE_SCOPE'
       );
     }
     if (updatedConfigs?.providers.microsoft.enabled) {
@@ -203,13 +237,28 @@ export function useConfigHandler(updatedConfigs?: Config) {
         {
           name: 'MICROSOFT_CLIENT_SECRET',
           value: updatedConfigs?.providers.microsoft.fields.client_secret ?? '',
+        },
+        {
+          name: 'MICROSOFT_CALLBACK_URL',
+          value: updatedConfigs?.providers.microsoft.fields.callback_url ?? '',
+        },
+        {
+          name: 'MICROSOFT_SCOPE',
+          value: updatedConfigs?.providers.microsoft.fields.scope ?? '',
+        },
+        {
+          name: 'MICROSOFT_TENANT',
+          value: updatedConfigs?.providers.microsoft.fields.tenant ?? '',
         }
       );
     } else {
       config = config.filter(
         (item) =>
           item.name !== 'MICROSOFT_CLIENT_ID' &&
-          item.name !== 'MICROSOFT_CLIENT_SECRET'
+          item.name !== 'MICROSOFT_CLIENT_SECRET' &&
+          item.name !== 'MICROSOFT_CALLBACK_URL' &&
+          item.name !== 'MICROSOFT_SCOPE' &&
+          item.name !== 'MICROSOFT_TENANT'
       );
     }
 
@@ -222,13 +271,23 @@ export function useConfigHandler(updatedConfigs?: Config) {
         {
           name: 'GITHUB_CLIENT_SECRET',
           value: updatedConfigs?.providers.github.fields.client_secret ?? '',
+        },
+        {
+          name: 'GITHUB_CALLBACK_URL',
+          value: updatedConfigs?.providers.github.fields.callback_url ?? '',
+        },
+        {
+          name: 'GITHUB_SCOPE',
+          value: updatedConfigs?.providers.github.fields.scope ?? '',
         }
       );
     } else {
       config = config.filter(
         (item) =>
           item.name !== 'GITHUB_CLIENT_ID' &&
-          item.name !== 'GITHUB_CLIENT_SECRET'
+          item.name !== 'GITHUB_CLIENT_SECRET' &&
+          item.name !== 'GITHUB_CALLBACK_URL' &&
+          item.name !== 'GITHUB_SCOPE'
       );
     }
 
@@ -255,7 +314,29 @@ export function useConfigHandler(updatedConfigs?: Config) {
     return config;
   });
 
-  // Trasforming the working configs back into the format required by the mutations
+  // Checking if any of the config fields are empty
+  const isFieldEmpty = (field: string) => field.trim() === '';
+
+  type ConfigSection = {
+    enabled: boolean;
+    fields: Record<string, string>;
+  };
+
+  const AreAnyConfigFieldsEmpty = (config: Config): boolean => {
+    const sections: Array<ConfigSection> = [
+      config.providers.github,
+      config.providers.google,
+      config.providers.microsoft,
+      config.mailConfigs,
+    ];
+
+    return sections.some(
+      (section) =>
+        section.enabled && Object.values(section.fields).some(isFieldEmpty)
+    );
+  };
+
+  // Transforming the working configs back into the format required by the mutations
   const updatedAllowedAuthProviders = computed(() => {
     return [
       {
@@ -279,55 +360,70 @@ export function useConfigHandler(updatedConfigs?: Config) {
     ];
   });
 
-  // Updating the auth provider configurations
-  const updateAuthProvider = async (
-    updateProviderStatus: UseMutationResponse<EnableAndDisableSsoMutation>
-  ) => {
-    const variables = {
-      providerInfo:
-        updatedAllowedAuthProviders.value as EnableAndDisableSsoArgs[],
-    };
-
-    const result = await updateProviderStatus.executeMutation(variables);
+  // Generic function to handle mutation execution and error handling
+  const executeMutation = async <T, V>(
+    mutation: UseMutationResponse<T>,
+    variables: AnyVariables = undefined,
+    errorMessage: string
+  ): Promise<boolean> => {
+    const result = await mutation.executeMutation(variables);
 
     if (result.error) {
-      toast.error(t('configs.auth_providers.update_failure'));
+      toast.error(t(errorMessage));
       return false;
     }
 
     return true;
   };
+
+  // Updating the auth provider configurations
+  const updateAuthProvider = (
+    updateProviderStatus: UseMutationResponse<EnableAndDisableSsoMutation>
+  ) =>
+    executeMutation(
+      updateProviderStatus,
+      {
+        providerInfo:
+          updatedAllowedAuthProviders.value as EnableAndDisableSsoArgs[],
+      },
+      'configs.auth_providers.update_failure'
+    );
 
   // Updating the infra configurations
-  const updateInfraConfigs = async (
+  const updateInfraConfigs = (
     updateInfraConfigsMutation: UseMutationResponse<UpdateInfraConfigsMutation>
-  ) => {
-    const variables = {
-      infraConfigs: updatedInfraConfigs.value as InfraConfigArgs[],
-    };
-
-    const result = await updateInfraConfigsMutation.executeMutation(variables);
-
-    if (result.error) {
-      toast.error(t('configs.mail_configs.update_failure'));
-      return false;
-    }
-
-    return true;
-  };
+  ) =>
+    executeMutation(
+      updateInfraConfigsMutation,
+      {
+        infraConfigs: updatedInfraConfigs.value as InfraConfigArgs[],
+      },
+      'configs.mail_configs.update_failure'
+    );
 
   // Resetting the infra configurations
-  const resetInfraConfigs = async (
+  const resetInfraConfigs = (
     resetInfraConfigsMutation: UseMutationResponse<ResetInfraConfigsMutation>
-  ) => {
-    const result = await resetInfraConfigsMutation.executeMutation();
+  ) =>
+    executeMutation(
+      resetInfraConfigsMutation,
+      undefined,
+      'configs.reset.failure'
+    );
 
-    if (result.error) {
-      toast.error(t('configs.reset.failure'));
-      return false;
-    }
-    return true;
-  };
+  // Updating the data sharing configurations
+  const updateDataSharingConfigs = (
+    toggleDataSharingMutation: UseMutationResponse<ToggleAnalyticsCollectionMutation>
+  ) =>
+    executeMutation(
+      toggleDataSharingMutation,
+      {
+        status: updatedConfigs?.dataSharingConfigs.enabled
+          ? 'ENABLE'
+          : 'DISABLE',
+      },
+      'configs.data_sharing.update_failure'
+    );
 
   return {
     currentConfigs,
@@ -335,11 +431,13 @@ export function useConfigHandler(updatedConfigs?: Config) {
     updatedInfraConfigs,
     updatedAllowedAuthProviders,
     updateAuthProvider,
+    updateDataSharingConfigs,
     updateInfraConfigs,
     resetInfraConfigs,
     fetchingInfraConfigs,
     fetchingAllowedAuthProviders,
     infraConfigsError,
     allowedAuthProvidersError,
+    AreAnyConfigFieldsEmpty,
   };
 }

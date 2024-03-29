@@ -17,7 +17,10 @@ import { AuthUser } from 'src/types/AuthUser';
 import { throwErr } from 'src/utils';
 import * as E from 'fp-ts/Either';
 import { Admin } from './admin.model';
-import { PaginationArgs } from 'src/types/input-types.args';
+import {
+  OffsetPaginationArgs,
+  PaginationArgs,
+} from 'src/types/input-types.args';
 import { InvitedUser } from './invited-user.model';
 import { Team } from 'src/team/team.model';
 import { TeamInvitation } from 'src/team-invitation/team-invitation.model';
@@ -29,7 +32,8 @@ import {
   EnableAndDisableSSOArgs,
   InfraConfigArgs,
 } from 'src/infra-config/input-args';
-import { InfraConfigEnumForClient } from 'src/types/InfraConfig';
+import { InfraConfigEnum } from 'src/types/InfraConfig';
+import { ServiceStatus } from 'src/infra-config/helper';
 
 @UseGuards(GqlThrottlerGuard)
 @Resolver(() => Infra)
@@ -76,6 +80,7 @@ export class InfraResolver {
 
   @ResolveField(() => [User], {
     description: 'Returns a list of all the users in infra',
+    deprecationReason: 'Use allUsersV2 instead',
   })
   @UseGuards(GqlAuthGuard, GqlAdminGuard)
   async allUsers(@Args() args: PaginationArgs): Promise<AuthUser[]> {
@@ -83,11 +88,33 @@ export class InfraResolver {
     return users;
   }
 
+  @ResolveField(() => [User], {
+    description: 'Returns a list of all the users in infra',
+  })
+  @UseGuards(GqlAuthGuard, GqlAdminGuard)
+  async allUsersV2(
+    @Args({
+      name: 'searchString',
+      nullable: true,
+      description: 'Search on users displayName or email',
+    })
+    searchString: string,
+    @Args() paginationOption: OffsetPaginationArgs,
+  ): Promise<AuthUser[]> {
+    const users = await this.adminService.fetchUsersV2(
+      searchString,
+      paginationOption,
+    );
+    return users;
+  }
+
   @ResolveField(() => [InvitedUser], {
     description: 'Returns a list of all the invited users',
   })
-  async invitedUsers(): Promise<InvitedUser[]> {
-    const users = await this.adminService.fetchInvitedUsers();
+  async invitedUsers(
+    @Args() args: OffsetPaginationArgs,
+  ): Promise<InvitedUser[]> {
+    const users = await this.adminService.fetchInvitedUsers(args);
     return users;
   }
 
@@ -247,10 +274,10 @@ export class InfraResolver {
   async infraConfigs(
     @Args({
       name: 'configNames',
-      type: () => [InfraConfigEnumForClient],
+      type: () => [InfraConfigEnum],
       description: 'Configs to fetch',
     })
-    names: InfraConfigEnumForClient[],
+    names: InfraConfigEnum[],
   ) {
     const infraConfigs = await this.infraConfigService.getMany(names);
     if (E.isLeft(infraConfigs)) throwErr(infraConfigs.left);
@@ -285,6 +312,25 @@ export class InfraResolver {
   }
 
   @Mutation(() => Boolean, {
+    description: 'Enable or disable analytics collection',
+  })
+  @UseGuards(GqlAuthGuard, GqlAdminGuard)
+  async toggleAnalyticsCollection(
+    @Args({
+      name: 'status',
+      type: () => ServiceStatus,
+      description: 'Toggle analytics collection',
+    })
+    analyticsCollectionStatus: ServiceStatus,
+  ) {
+    const res = await this.infraConfigService.toggleAnalyticsCollection(
+      analyticsCollectionStatus,
+    );
+    if (E.isLeft(res)) throwErr(res.left);
+    return res.right;
+  }
+
+  @Mutation(() => Boolean, {
     description: 'Reset Infra Configs with default values (.env)',
   })
   @UseGuards(GqlAuthGuard, GqlAdminGuard)
@@ -306,7 +352,9 @@ export class InfraResolver {
     })
     providerInfo: EnableAndDisableSSOArgs[],
   ) {
-    const isUpdated = await this.infraConfigService.enableAndDisableSSO(providerInfo);
+    const isUpdated = await this.infraConfigService.enableAndDisableSSO(
+      providerInfo,
+    );
     if (E.isLeft(isUpdated)) throwErr(isUpdated.left);
 
     return true;

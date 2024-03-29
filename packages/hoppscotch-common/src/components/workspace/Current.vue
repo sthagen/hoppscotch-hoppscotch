@@ -27,13 +27,10 @@ const workspaceService = useService(WorkspaceService)
 const workspace = workspaceService.currentWorkspace
 
 const currentWorkspace = computed(() => {
-  if (props.isOnlyPersonal) {
-    return `${t("workspace.personal")}`
+  if (props.isOnlyPersonal || workspace.value.type === "personal") {
+    return t("workspace.personal")
   }
-  if (workspace.value.type === "team") {
-    return teamWorkspaceName.value
-  }
-  return `${t("workspace.personal")}`
+  return teamWorkspaceName.value
 })
 
 const teamWorkspaceName = computed(() => {

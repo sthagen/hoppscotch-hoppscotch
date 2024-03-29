@@ -3,6 +3,8 @@ import { Observable } from "rxjs"
 import { Component } from "vue"
 import { getI18n } from "~/modules/i18n"
 import * as E from "fp-ts/Either"
+import { AxiosRequestConfig } from "axios"
+import { GQLError } from "~/helpers/backend/GQLClient"
 
 /**
  * A common (and required) set of fields that describe a user.
@@ -136,6 +138,15 @@ export type AuthPlatformDef = {
   getGQLClientOptions?: () => Partial<ClientOptions>
 
   /**
+   * called by the platform to provide additional/different config options when
+   * sending requests with axios
+   * eg: SH needs to include cookies in the request, while Central doesn't and throws a cors error if it does
+   *
+   * @returns AxiosRequestConfig
+   */
+  axiosPlatformConfig?: () => AxiosRequestConfig
+
+  /**
    * Returns the string content that should be returned when the user selects to
    * copy auth token from Developer Options.
    *
@@ -219,9 +230,11 @@ export type AuthPlatformDef = {
   /**
    * Updates the display name of the user
    * @param name The new name to set this to.
-   * @returns An empty promise that is resolved when the operation is complete
+   * @returns A promise that resolves with the display name update status when the operation is complete
    */
-  setDisplayName: (name: string) => Promise<void>
+  setDisplayName: (
+    name: string
+  ) => Promise<E.Either<GQLError<string>, undefined>>
 
   /**
    * Returns the list of allowed auth providers for the platform ( the currently supported ones are GOOGLE, GITHUB, EMAIL, MICROSOFT, SAML )

@@ -18,11 +18,12 @@ import {
   HoppRESTParam,
   parseRawKeyValueEntriesE,
   parseTemplateStringE,
+  HoppRESTAuth,
+  HoppRESTHeaders,
 } from "@hoppscotch/data"
 import { arrayFlatMap, arraySort } from "../functional/array"
 import { toFormData } from "../functional/formData"
 import { tupleWithSameKeysToRecord } from "../functional/record"
-import { getGlobalVariables } from "~/newstore/environments"
 
 export interface EffectiveHoppRESTRequest extends HoppRESTRequest {
   /**
@@ -34,6 +35,7 @@ export interface EffectiveHoppRESTRequest extends HoppRESTRequest {
   effectiveFinalHeaders: { key: string; value: string }[]
   effectiveFinalParams: { key: string; value: string }[]
   effectiveFinalBody: FormData | string | null
+  effectiveFinalRequestVariables: { key: string; value: string }[]
 }
 
 /**
@@ -44,7 +46,12 @@ export interface EffectiveHoppRESTRequest extends HoppRESTRequest {
  */
 export const getComputedAuthHeaders = (
   envVars: Environment["variables"],
-  req?: HoppRESTRequest,
+  req?:
+    | HoppRESTRequest
+    | {
+        auth: HoppRESTAuth
+        headers: HoppRESTHeaders
+      },
   auth?: HoppRESTRequest["auth"],
   parse = true
 ) => {
@@ -75,16 +82,17 @@ export const getComputedAuthHeaders = (
     })
   } else if (
     request.auth.authType === "bearer" ||
-    request.auth.authType === "oauth-2"
+    (request.auth.authType === "oauth-2" && request.auth.addTo === "HEADERS")
   ) {
+    const token =
+      request.auth.authType === "bearer"
+        ? request.auth.token
+        : request.auth.grantTypeInfo.token
+
     headers.push({
       active: true,
       key: "Authorization",
-      value: `Bearer ${
-        parse
-          ? parseTemplateString(request.auth.token, envVars)
-          : request.auth.token
-      }`,
+      value: `Bearer ${parse ? parseTemplateString(token, envVars) : token}`,
     })
   } else if (request.auth.authType === "api-key") {
     const { key, addTo } = request.auth
@@ -108,7 +116,12 @@ export const getComputedAuthHeaders = (
  * @returns The list of headers
  */
 export const getComputedBodyHeaders = (
-  req: HoppRESTRequest
+  req:
+    | HoppRESTRequest
+    | {
+        auth: HoppRESTAuth
+        headers: HoppRESTHeaders
+      }
 ): HoppRESTHeader[] => {
   // If a content-type is already defined, that will override this
   if (
@@ -118,8 +131,10 @@ export const getComputedBodyHeaders = (
   )
     return []
 
+  if (!("body" in req)) return []
+
   // Body should have a non-null content-type
-  if (req.body.contentType === null) return []
+  if (!req.body || req.body.contentType === null) return []
 
   return [
     {
@@ -143,7 +158,12 @@ export type ComputedHeader = {
  * @returns The headers that are generated along with the source of that header
  */
 export const getComputedHeaders = (
-  req: HoppRESTRequest,
+  req:
+    | HoppRESTRequest
+    | {
+        auth: HoppRESTAuth
+        headers: HoppRESTHeaders
+      },
   envVars: Environment["variables"],
   parse = true
 ): ComputedHeader[] => {
@@ -177,17 +197,40 @@ export const getComputedParams = (
 ): ComputedParam[] => {
   // When this gets complex, its best to split this function off (like with getComputedHeaders)
   // API-key auth can be added to query params
-  if (!req.auth || !req.auth.authActive) return []
-  if (req.auth.authType !== "api-key") return []
-  if (req.auth.addTo !== "Query params") return []
+  if (!req.auth || !req.auth.authActive) {
+    return []
+  }
+
+  if (req.auth.authType !== "api-key" && req.auth.authType !== "oauth-2") {
+    return []
+  }
+
+  if (req.auth.addTo !== "QUERY_PARAMS") {
+    return []
+  }
+
+  if (req.auth.authType === "api-key") {
+    return [
+      {
+        source: "auth" as const,
+        param: {
+          active: true,
+          key: parseTemplateString(req.auth.key, envVars),
+          value: parseTemplateString(req.auth.value, envVars),
+        },
+      },
+    ]
+  }
+
+  const { grantTypeInfo } = req.auth
 
   return [
     {
       source: "auth",
       param: {
         active: true,
-        key: parseTemplateString(req.auth.key, envVars),
-        value: parseTemplateString(req.auth.value, envVars),
+        key: "access_token",
+        value: parseTemplateString(grantTypeInfo.token, envVars),
       },
     },
   ]
@@ -231,7 +274,7 @@ function getFinalBodyFromRequest(
 
   if (request.body.contentType === "application/x-www-form-urlencoded") {
     const parsedBodyRecord = pipe(
-      request.body.body,
+      request.body.body ?? "",
       parseRawKeyValueEntriesE,
       E.map(
         flow(
@@ -268,7 +311,7 @@ function getFinalBodyFromRequest(
 
   if (request.body.contentType === "multipart/form-data") {
     return pipe(
-      request.body.body,
+      request.body.body ?? [],
       A.filter((x) => (x.key !== "" || x.isFile) && x.active), // Remove empty keys
 
       // Sort files down
@@ -313,38 +356,53 @@ export function getEffectiveRESTRequest(
   request: HoppRESTRequest,
   environment: Environment
 ): EffectiveHoppRESTRequest {
-  const envVariables = [...environment.variables, ...getGlobalVariables()]
-
   const effectiveFinalHeaders = pipe(
-    getComputedHeaders(request, envVariables).map((h) => h.header),
+    getComputedHeaders(request, environment.variables).map((h) => h.header),
     A.concat(request.headers),
     A.filter((x) => x.active && x.key !== ""),
     A.map((x) => ({
       active: true,
-      key: parseTemplateString(x.key, envVariables),
-      value: parseTemplateString(x.value, envVariables),
+      key: parseTemplateString(x.key, environment.variables),
+      value: parseTemplateString(x.value, environment.variables),
     }))
   )
 
   const effectiveFinalParams = pipe(
-    getComputedParams(request, envVariables).map((p) => p.param),
+    getComputedParams(request, environment.variables).map((p) => p.param),
     A.concat(request.params),
     A.filter((x) => x.active && x.key !== ""),
     A.map((x) => ({
       active: true,
-      key: parseTemplateString(x.key, envVariables),
-      value: parseTemplateString(x.value, envVariables),
+      key: parseTemplateString(x.key, environment.variables),
+      value: parseTemplateString(x.value, environment.variables),
     }))
   )
 
-  const effectiveFinalBody = getFinalBodyFromRequest(request, envVariables)
+  const effectiveFinalRequestVariables = pipe(
+    request.requestVariables,
+    A.filter((x) => x.active && x.key !== ""),
+    A.map((x) => ({
+      active: true,
+      key: parseTemplateString(x.key, environment.variables),
+      value: parseTemplateString(x.value, environment.variables),
+    }))
+  )
+
+  const effectiveFinalBody = getFinalBodyFromRequest(
+    request,
+    environment.variables
+  )
 
   return {
     ...request,
-    effectiveFinalURL: parseTemplateString(request.endpoint, envVariables),
+    effectiveFinalURL: parseTemplateString(
+      request.endpoint,
+      environment.variables
+    ),
     effectiveFinalHeaders,
     effectiveFinalParams,
     effectiveFinalBody,
+    effectiveFinalRequestVariables,
   }
 }
 

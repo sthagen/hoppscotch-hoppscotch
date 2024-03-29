@@ -146,8 +146,10 @@
       @hide-modal="displayModalImportExport(false)"
     />
     <CollectionsProperties
+      v-model="collectionPropertiesModalActiveTab"
       :show="showModalEditProperties"
       :editing-properties="editingProperties"
+      source="GraphQL"
       @hide-modal="displayModalEditProperties(false)"
       @set-collection-properties="setCollectionProperties"
     />
@@ -155,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from "vue"
+import { nextTick, onMounted, ref } from "vue"
 import { clone, cloneDeep } from "lodash-es"
 import {
   graphqlCollections$,
@@ -186,6 +188,10 @@ import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { updateInheritedPropertiesForAffectedRequests } from "~/helpers/collection/collection"
 import { useToast } from "~/composables/toast"
 import { getRequestsByPath } from "~/helpers/collection/request"
+import { PersistenceService } from "~/services/persistence"
+import { PersistedOAuthConfig } from "~/services/oauth/oauth.service"
+import { GQLOptionTabs } from "~/components/graphql/RequestOptions.vue"
+import { EditingProperties } from "../Properties.vue"
 
 const t = useI18n()
 const toast = useToast()
@@ -219,7 +225,7 @@ const editingRequest = ref<HoppGQLRequest | null>(null)
 const editingRequestIndex = ref<number | null>(null)
 
 const editingProperties = ref<{
-  collection: HoppCollection | null
+  collection: Partial<HoppCollection> | null
   isRootCollection: boolean
   path: string
   inheritedProperties?: HoppInheritedProperty
@@ -231,6 +237,53 @@ const editingProperties = ref<{
 })
 
 const filterText = ref("")
+
+const persistenceService = useService(PersistenceService)
+
+const collectionPropertiesModalActiveTab = ref<GQLOptionTabs>("headers")
+
+onMounted(() => {
+  const localOAuthTempConfig =
+    persistenceService.getLocalConfig("oauth_temp_config")
+
+  if (!localOAuthTempConfig) {
+    return
+  }
+
+  const { context, source, token }: PersistedOAuthConfig =
+    JSON.parse(localOAuthTempConfig)
+
+  if (source === "REST") {
+    return
+  }
+
+  if (context?.type === "collection-properties") {
+    // load the unsaved editing properties
+    const unsavedCollectionPropertiesString = persistenceService.getLocalConfig(
+      "unsaved_collection_properties"
+    )
+
+    if (unsavedCollectionPropertiesString) {
+      const unsavedCollectionProperties: EditingProperties = JSON.parse(
+        unsavedCollectionPropertiesString
+      )
+
+      const auth = unsavedCollectionProperties.collection?.auth
+
+      if (auth?.authType === "oauth-2") {
+        const grantTypeInfo = auth.grantTypeInfo
+
+        grantTypeInfo && (grantTypeInfo.token = token ?? "")
+      }
+
+      editingProperties.value = unsavedCollectionProperties
+    }
+
+    persistenceService.removeLocalConfig("oauth_temp_config")
+    collectionPropertiesModalActiveTab.value = "authorization"
+    showModalEditProperties.value = true
+  }
+})
 
 const filteredCollections = computed(() => {
   const collectionsClone = clone(collections.value)
@@ -557,7 +610,7 @@ const editProperties = ({
   if (collectionIndex === null || collection === null) return
 
   const parentIndex = collectionIndex.split("/").slice(0, -1).join("/") // remove last folder to get parent folder
-  let inheritedProperties = {}
+  let inheritedProperties = undefined
 
   if (parentIndex) {
     const { auth, headers } = cascadeParentCollectionForHeaderAuth(
@@ -568,7 +621,7 @@ const editProperties = ({
     inheritedProperties = {
       auth,
       headers,
-    } as HoppInheritedProperty
+    }
   }
 
   editingProperties.value = {
@@ -582,11 +635,15 @@ const editProperties = ({
 }
 
 const setCollectionProperties = (newCollection: {
-  collection: HoppCollection
+  collection: Partial<HoppCollection> | null
   path: string
   isRootCollection: boolean
 }) => {
   const { collection, path, isRootCollection } = newCollection
+  if (!collection) {
+    return
+  }
+
   if (isRootCollection) {
     editGraphqlCollection(parseInt(path), collection)
   } else {

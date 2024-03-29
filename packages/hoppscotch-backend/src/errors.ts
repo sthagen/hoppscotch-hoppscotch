@@ -11,6 +11,14 @@ export const ONLY_ONE_ADMIN_ACCOUNT =
   'admin/only_one_admin_account_found' as const;
 
 /**
+ * Admin user can not be deleted
+ * To delete the admin user, first make the Admin user a normal user
+ * (AdminService)
+ */
+export const ADMIN_CAN_NOT_BE_DELETED =
+  'admin/admin_can_not_be_deleted' as const;
+
+/**
  * Token Authorization failed (Check 'Authorization' Header)
  * (GqlAuthGuard)
  */
@@ -77,6 +85,12 @@ export const USER_ALREADY_INVITED = 'admin/user_already_invited' as const;
 export const USER_UPDATE_FAILED = 'user/update_failed' as const;
 
 /**
+ * User display name validation failure
+ * (UserService)
+ */
+export const USER_SHORT_DISPLAY_NAME = 'user/short_display_name' as const;
+
+/**
  * User deletion failure
  * (UserService)
  */
@@ -98,6 +112,13 @@ export const USER_IS_OWNER = 'user/is_owner' as const;
  * (UserService)
  */
 export const USER_IS_ADMIN = 'user/is_admin' as const;
+
+/**
+ * User invite deletion failure error due to invitation not found
+ * (AdminService)
+ */
+export const USER_INVITATION_DELETION_FAILED =
+  'user/invitation_deletion_failed' as const;
 
 /**
  * Teams not found
@@ -214,6 +235,12 @@ export const TEAM_COL_SAME_NEXT_COLL =
   'team_coll/collection_and_next_collection_are_same';
 
 /**
+ * Team Collection search failed
+ * (TeamCollectionService)
+ */
+export const TEAM_COL_SEARCH_FAILED = 'team_coll/team_collection_search_failed';
+
+/**
  * Team Collection Re-Ordering Failed
  * (TeamCollectionService)
  */
@@ -269,6 +296,13 @@ export const TEAM_COLL_DATA_INVALID =
   'team_coll/team_coll_data_invalid' as const;
 
 /**
+ * Team Collection parent tree generation failed
+ * (TeamCollectionService)
+ */
+export const TEAM_COLL_PARENT_TREE_GEN_FAILED =
+  'team_coll/team_coll_parent_tree_generation_failed';
+
+/**
  * Tried to perform an action on a request that doesn't accept their member role level
  * (GqlRequestTeamMemberGuard)
  */
@@ -292,6 +326,19 @@ export const TEAM_REQ_INVALID_TARGET_COLL_ID =
  * (TeamRequestService)
  */
 export const TEAM_REQ_REORDERING_FAILED = 'team_req/reordering_failed' as const;
+
+/**
+ * Team Request search failed
+ * (TeamRequestService)
+ */
+export const TEAM_REQ_SEARCH_FAILED = 'team_req/team_request_search_failed';
+
+/**
+ * Team Request parent tree generation failed
+ * (TeamRequestService)
+ */
+export const TEAM_REQ_PARENT_TREE_GEN_FAILED =
+  'team_req/team_req_parent_tree_generation_failed';
 
 /**
  * No Postmark Sender Email defined
@@ -691,8 +738,26 @@ export const INFRA_CONFIG_SERVICE_NOT_CONFIGURED =
   'infra_config/service_not_configured' as const;
 
 /**
+ * Infra Config update/fetch operation not allowed
+ * (InfraConfigService)
+ */
+export const INFRA_CONFIG_OPERATION_NOT_ALLOWED =
+  'infra_config/operation_not_allowed';
+
+/**
  * Error message for when the database table does not exist
  * (InfraConfigService)
  */
 export const DATABASE_TABLE_NOT_EXIST =
   'Database migration not found. Please check the documentation for assistance: https://docs.hoppscotch.io/documentation/self-host/community-edition/install-and-build#running-migrations';
+
+/**
+ * PostHog client is not initialized
+ * (InfraConfigService)
+ */
+export const POSTHOG_CLIENT_NOT_INITIALIZED = 'posthog/client_not_initialized';
+
+/**
+ * Inputs supplied are invalid
+ */
+export const INVALID_PARAMS = 'invalid_parameters' as const;

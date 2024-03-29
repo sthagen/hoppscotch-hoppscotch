@@ -8,7 +8,7 @@
   >
     <template #body>
       <HoppSmartTabs
-        v-model="selectedOptionTab"
+        v-model="activeTab"
         styles="sticky overflow-x-auto flex-shrink-0 bg-primary top-0 z-10 !-py-4"
         render-inactive-tabs
       >
@@ -16,7 +16,6 @@
           <HttpHeaders
             v-model="editableCollection"
             :is-collection-property="true"
-            @change-tab="changeOptionTab"
           />
           <div
             class="bg-bannerInfo px-4 py-2 flex items-center sticky bottom-0"
@@ -34,6 +33,7 @@
             :is-collection-property="true"
             :is-root-collection="editingProperties?.isRootCollection"
             :inherited-properties="editingProperties?.inheritedProperties"
+            :source="source"
           />
           <div
             class="bg-bannerInfo px-4 py-2 flex items-center sticky bottom-0"
@@ -64,28 +64,42 @@
 </template>
 
 <script setup lang="ts">
-import { watch, ref } from "vue"
 import { useI18n } from "@composables/i18n"
-import { HoppCollection } from "@hoppscotch/data"
-import { RESTOptionTabs } from "../http/RequestOptions.vue"
-import { TeamCollection } from "~/helpers/teams/TeamCollection"
+import {
+  GQLHeader,
+  HoppCollection,
+  HoppGQLAuth,
+  HoppRESTAuth,
+  HoppRESTHeaders,
+} from "@hoppscotch/data"
+import { useVModel } from "@vueuse/core"
+import { useService } from "dioc/vue"
 import { clone } from "lodash-es"
-import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
+import { ref, watch } from "vue"
 
+import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
+import { PersistenceService } from "~/services/persistence"
+
+const persistenceService = useService(PersistenceService)
 const t = useI18n()
 
-type EditingProperties = {
-  collection: HoppCollection | TeamCollection | null
+export type EditingProperties = {
+  collection: Partial<HoppCollection> | null
   isRootCollection: boolean
   path: string
-  inheritedProperties: HoppInheritedProperty | undefined
+  inheritedProperties?: HoppInheritedProperty
 }
+
+type HoppCollectionAuth = HoppRESTAuth | HoppGQLAuth
+type HoppCollectionHeaders = HoppRESTHeaders | GQLHeader[]
 
 const props = withDefaults(
   defineProps<{
     show: boolean
     loadingState: boolean
     editingProperties: EditingProperties | null
+    source: "REST" | "GraphQL"
+    modelValue: string
   }>(),
   {
     show: false,
@@ -95,50 +109,68 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: "set-collection-properties", newCollection: any): void
+  (
+    e: "set-collection-properties",
+    newCollection: Omit<EditingProperties, "inheritedProperties">
+  ): void
   (e: "hide-modal"): void
+  (e: "update:modelValue"): void
 }>()
 
-const editableCollection = ref({
-  body: {
-    contentType: null,
-    body: null,
-  },
+const editableCollection = ref<{
+  headers: HoppCollectionHeaders
+  auth: HoppCollectionAuth
+}>({
   headers: [],
   auth: {
     authType: "inherit",
     authActive: false,
   },
-}) as any
+})
 
-const selectedOptionTab = ref("headers")
+watch(
+  editableCollection,
+  (updatedEditableCollection) => {
+    if (props.show && props.editingProperties) {
+      const unsavedCollectionProperties: EditingProperties = {
+        collection: updatedEditableCollection,
+        isRootCollection: props.editingProperties?.isRootCollection ?? false,
+        path: props.editingProperties?.path,
+        inheritedProperties: props.editingProperties?.inheritedProperties,
+      }
+      persistenceService.setLocalConfig(
+        "unsaved_collection_properties",
+        JSON.stringify(unsavedCollectionProperties)
+      )
+    }
+  },
+  {
+    deep: true,
+  }
+)
 
-const changeOptionTab = (tab: RESTOptionTabs) => {
-  selectedOptionTab.value = tab
-}
+const activeTab = useVModel(props, "modelValue", emit)
 
 watch(
   () => props.show,
   (show) => {
     if (show && props.editingProperties?.collection) {
       editableCollection.value.auth = clone(
-        props.editingProperties.collection.auth
+        props.editingProperties.collection.auth as HoppCollectionAuth
       )
       editableCollection.value.headers = clone(
-        props.editingProperties.collection.headers
+        props.editingProperties.collection.headers as HoppCollectionHeaders
       )
     } else {
       editableCollection.value = {
-        body: {
-          contentType: null,
-          body: null,
-        },
         headers: [],
         auth: {
           authType: "inherit",
           authActive: false,
         },
       }
+
+      persistenceService.removeLocalConfig("unsaved_collection_properties")
     }
   }
 )
@@ -146,7 +178,6 @@ watch(
 const saveEditedCollection = () => {
   if (!props.editingProperties) return
   const finalCollection = clone(editableCollection.value)
-  delete finalCollection.body
   const collection = {
     path: props.editingProperties.path,
     collection: {
@@ -155,10 +186,12 @@ const saveEditedCollection = () => {
     },
     isRootCollection: props.editingProperties.isRootCollection,
   }
-  emit("set-collection-properties", collection)
+  emit("set-collection-properties", collection as EditingProperties)
+  persistenceService.removeLocalConfig("unsaved_collection_properties")
 }
 
 const hideModal = () => {
+  persistenceService.removeLocalConfig("unsaved_collection_properties")
   emit("hide-modal")
 }
 </script>

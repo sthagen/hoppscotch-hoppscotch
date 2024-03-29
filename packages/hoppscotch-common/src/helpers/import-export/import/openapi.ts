@@ -16,6 +16,8 @@ import {
   makeRESTRequest,
   HoppCollection,
   makeCollection,
+  HoppRESTRequestVariable,
+  HoppRESTRequest,
 } from "@hoppscotch/data"
 import { pipe, flow } from "fp-ts/function"
 import * as A from "fp-ts/Array"
@@ -24,6 +26,7 @@ import * as O from "fp-ts/Option"
 import * as TE from "fp-ts/TaskEither"
 import * as RA from "fp-ts/ReadonlyArray"
 import { IMPORTER_INVALID_FILE_FORMAT } from "."
+import { cloneDeep } from "lodash-es"
 
 export const OPENAPI_DEREF_ERROR = "openapi/deref_error" as const
 
@@ -73,6 +76,27 @@ const parseOpenAPIParams = (params: OpenAPIParamsType[]): HoppRESTParam[] =>
         O.map(
           (param) =>
             <HoppRESTParam>{
+              key: param.name,
+              value: "", // TODO: Can we do anything more ? (parse default values maybe)
+              active: true,
+            }
+        )
+      )
+    )
+  )
+
+const parseOpenAPIVariables = (
+  variables: OpenAPIParamsType[]
+): HoppRESTRequestVariable[] =>
+  pipe(
+    variables,
+
+    A.filterMap(
+      flow(
+        O.fromPredicate((param) => param.in === "path"),
+        O.map(
+          (param) =>
+            <HoppRESTRequestVariable>{
               key: param.name,
               value: "", // TODO: Can we do anything more ? (parse default values maybe)
               active: true,
@@ -255,67 +279,92 @@ const resolveOpenAPIV3SecurityObj = (
       return {
         authType: "oauth-2",
         authActive: true,
-        accessTokenURL: scheme.flows.authorizationCode.tokenUrl ?? "",
-        authURL: scheme.flows.authorizationCode.authorizationUrl ?? "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          grantType: "AUTHORIZATION_CODE",
+          authEndpoint: scheme.flows.authorizationCode.authorizationUrl ?? "",
+          clientID: "",
+          scopes: _schemeData.join(" "),
+          token: "",
+          isPKCE: false,
+          tokenEndpoint: scheme.flows.authorizationCode.tokenUrl ?? "",
+          clientSecret: "",
+        },
+        addTo: "HEADERS",
       }
     } else if (scheme.flows.implicit) {
       return {
         authType: "oauth-2",
         authActive: true,
-        authURL: scheme.flows.implicit.authorizationUrl ?? "",
-        accessTokenURL: "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          grantType: "IMPLICIT",
+          authEndpoint: scheme.flows.implicit.authorizationUrl ?? "",
+          clientID: "",
+          token: "",
+          scopes: _schemeData.join(" "),
+        },
+        addTo: "HEADERS",
       }
     } else if (scheme.flows.password) {
       return {
         authType: "oauth-2",
         authActive: true,
-        authURL: "",
-        accessTokenURL: scheme.flows.password.tokenUrl ?? "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          grantType: "PASSWORD",
+          clientID: "",
+          authEndpoint: scheme.flows.password.tokenUrl,
+          clientSecret: "",
+          password: "",
+          username: "",
+          token: "",
+          scopes: _schemeData.join(" "),
+        },
+        addTo: "HEADERS",
       }
     } else if (scheme.flows.clientCredentials) {
       return {
         authType: "oauth-2",
         authActive: true,
-        accessTokenURL: scheme.flows.clientCredentials.tokenUrl ?? "",
-        authURL: "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          grantType: "CLIENT_CREDENTIALS",
+          authEndpoint: scheme.flows.clientCredentials.tokenUrl ?? "",
+          clientID: "",
+          clientSecret: "",
+          scopes: _schemeData.join(" "),
+          token: "",
+        },
+        addTo: "HEADERS",
       }
     }
     return {
       authType: "oauth-2",
       authActive: true,
-      accessTokenURL: "",
-      authURL: "",
-      clientID: "",
-      oidcDiscoveryURL: "",
-      scope: _schemeData.join(" "),
-      token: "",
+      grantTypeInfo: {
+        grantType: "AUTHORIZATION_CODE",
+        authEndpoint: "",
+        clientID: "",
+        scopes: _schemeData.join(" "),
+        token: "",
+        isPKCE: false,
+        tokenEndpoint: "",
+        clientSecret: "",
+      },
+      addTo: "HEADERS",
     }
   } else if (scheme.type === "openIdConnect") {
     return {
       authType: "oauth-2",
       authActive: true,
-      accessTokenURL: "",
-      authURL: "",
-      clientID: "",
-      oidcDiscoveryURL: scheme.openIdConnectUrl ?? "",
-      scope: _schemeData.join(" "),
-      token: "",
+      grantTypeInfo: {
+        grantType: "AUTHORIZATION_CODE",
+        authEndpoint: "",
+        clientID: "",
+        scopes: _schemeData.join(" "),
+        token: "",
+        isPKCE: false,
+        tokenEndpoint: "",
+        clientSecret: "",
+      },
+      addTo: "HEADERS",
     }
   }
 
@@ -392,56 +441,76 @@ const resolveOpenAPIV2SecurityScheme = (
       return {
         authType: "oauth-2",
         authActive: true,
-        accessTokenURL: scheme.tokenUrl ?? "",
-        authURL: scheme.authorizationUrl ?? "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          authEndpoint: scheme.authorizationUrl ?? "",
+          clientID: "",
+          clientSecret: "",
+          grantType: "AUTHORIZATION_CODE",
+          scopes: _schemeData.join(" "),
+          token: "",
+          isPKCE: false,
+          tokenEndpoint: scheme.tokenUrl ?? "",
+        },
+        addTo: "HEADERS",
       }
     } else if (scheme.flow === "implicit") {
       return {
         authType: "oauth-2",
         authActive: true,
-        accessTokenURL: "",
-        authURL: scheme.authorizationUrl ?? "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          authEndpoint: scheme.authorizationUrl ?? "",
+          clientID: "",
+          grantType: "IMPLICIT",
+          scopes: _schemeData.join(" "),
+          token: "",
+        },
+        addTo: "HEADERS",
       }
     } else if (scheme.flow === "application") {
       return {
         authType: "oauth-2",
         authActive: true,
-        accessTokenURL: scheme.tokenUrl ?? "",
-        authURL: "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          authEndpoint: scheme.tokenUrl ?? "",
+          clientID: "",
+          clientSecret: "",
+          grantType: "CLIENT_CREDENTIALS",
+          scopes: _schemeData.join(" "),
+          token: "",
+        },
+        addTo: "HEADERS",
       }
     } else if (scheme.flow === "password") {
       return {
         authType: "oauth-2",
         authActive: true,
-        accessTokenURL: scheme.tokenUrl ?? "",
-        authURL: "",
-        clientID: "",
-        oidcDiscoveryURL: "",
-        scope: _schemeData.join(" "),
-        token: "",
+        grantTypeInfo: {
+          grantType: "PASSWORD",
+          authEndpoint: scheme.tokenUrl ?? "",
+          clientID: "",
+          clientSecret: "",
+          password: "",
+          scopes: _schemeData.join(" "),
+          token: "",
+          username: "",
+        },
+        addTo: "HEADERS",
       }
     }
     return {
       authType: "oauth-2",
       authActive: true,
-      accessTokenURL: "",
-      authURL: "",
-      clientID: "",
-      oidcDiscoveryURL: "",
-      scope: _schemeData.join(" "),
-      token: "",
+      grantTypeInfo: {
+        authEndpoint: "",
+        clientID: "",
+        clientSecret: "",
+        grantType: "AUTHORIZATION_CODE",
+        scopes: _schemeData.join(" "),
+        token: "",
+        isPKCE: false,
+        tokenEndpoint: "",
+      },
+      addTo: "HEADERS",
     }
   }
 
@@ -558,50 +627,98 @@ const convertPathToHoppReqs = (
           ? openAPIUrl + openAPIPath.slice(1)
           : openAPIUrl + openAPIPath
 
-      return makeRESTRequest({
-        name: info.operationId ?? info.summary ?? "Untitled Request",
-        method: method.toUpperCase(),
-        endpoint,
+      const res: {
+        request: HoppRESTRequest
+        metadata: {
+          tags: string[]
+        }
+      } = {
+        request: makeRESTRequest({
+          name: info.operationId ?? info.summary ?? "Untitled Request",
+          method: method.toUpperCase(),
+          endpoint,
 
-        // We don't need to worry about reference types as the Dereferencing pass should remove them
-        params: parseOpenAPIParams(
-          (info.parameters as OpenAPIParamsType[] | undefined) ?? []
-        ),
-        headers: parseOpenAPIHeaders(
-          (info.parameters as OpenAPIParamsType[] | undefined) ?? []
-        ),
+          // We don't need to worry about reference types as the Dereferencing pass should remove them
+          params: parseOpenAPIParams(
+            (info.parameters as OpenAPIParamsType[] | undefined) ?? []
+          ),
+          headers: parseOpenAPIHeaders(
+            (info.parameters as OpenAPIParamsType[] | undefined) ?? []
+          ),
 
-        auth: parseOpenAPIAuth(doc, info),
+          auth: parseOpenAPIAuth(doc, info),
 
-        body: parseOpenAPIBody(doc, info),
+          body: parseOpenAPIBody(doc, info),
 
-        preRequestScript: "",
-        testScript: "",
-      })
+          preRequestScript: "",
+          testScript: "",
+
+          requestVariables: parseOpenAPIVariables(
+            (info.parameters as OpenAPIParamsType[] | undefined) ?? []
+          ),
+        }),
+        metadata: {
+          tags: info.tags ?? [],
+        },
+      }
+
+      return res
     }),
 
     // Disable Readonly
     RA.toArray
   )
 
-const convertOpenApiDocToHopp = (
-  doc: OpenAPI.Document
+const convertOpenApiDocsToHopp = (
+  docs: OpenAPI.Document[]
 ): TE.TaskEither<never, HoppCollection[]> => {
-  const name = doc.info.title
+  const collections = docs.map((doc) => {
+    const name = doc.info.title
 
-  const paths = Object.entries(doc.paths ?? {})
-    .map(([pathName, pathObj]) => convertPathToHoppReqs(doc, pathName, pathObj))
-    .flat()
+    const paths = Object.entries(doc.paths ?? {})
+      .map(([pathName, pathObj]) =>
+        convertPathToHoppReqs(doc, pathName, pathObj)
+      )
+      .flat()
 
-  return TE.of([
-    makeCollection({
+    const requestsByTags: Record<string, Array<HoppRESTRequest>> = {}
+    const requestsWithoutTags: Array<HoppRESTRequest> = []
+
+    paths.forEach(({ metadata, request }) => {
+      const tags = metadata.tags
+
+      if (tags.length === 0) {
+        requestsWithoutTags.push(request)
+        return
+      }
+
+      for (const tag of tags) {
+        if (!requestsByTags[tag]) {
+          requestsByTags[tag] = []
+        }
+
+        requestsByTags[tag].push(cloneDeep(request))
+      }
+    })
+
+    return makeCollection({
       name,
-      folders: [],
-      requests: paths,
+      folders: Object.entries(requestsByTags).map(([name, paths]) =>
+        makeCollection({
+          name,
+          requests: paths,
+          folders: [],
+          auth: { authType: "inherit", authActive: true },
+          headers: [],
+        })
+      ),
+      requests: requestsWithoutTags,
       auth: { authType: "inherit", authActive: true },
       headers: [],
-    }),
-  ])
+    })
+  })
+
+  return TE.of(collections)
 }
 
 const parseOpenAPIDocContent = (str: string) =>
@@ -614,29 +731,49 @@ const parseOpenAPIDocContent = (str: string) =>
     )
   )
 
-export const hoppOpenAPIImporter = (fileContent: string) =>
+export const hoppOpenAPIImporter = (fileContents: string[]) =>
   pipe(
     // See if we can parse JSON properly
-    fileContent,
-    parseOpenAPIDocContent,
-    TE.fromOption(() => IMPORTER_INVALID_FILE_FORMAT),
+    fileContents,
+    A.traverse(O.Applicative)(parseOpenAPIDocContent),
+    TE.fromOption(() => {
+      return IMPORTER_INVALID_FILE_FORMAT
+    }),
     // Try validating, else the importer is invalid file format
-    TE.chainW((obj) =>
-      pipe(
+    TE.chainW((docArr) => {
+      return pipe(
         TE.tryCatch(
-          () => SwaggerParser.validate(obj),
+          async () => {
+            const resultDoc = []
+
+            for (const docObj of docArr) {
+              const validatedDoc = await SwaggerParser.validate(docObj)
+              resultDoc.push(validatedDoc)
+            }
+
+            return resultDoc
+          },
           () => IMPORTER_INVALID_FILE_FORMAT
         )
       )
-    ),
+    }),
     // Deference the references
-    TE.chainW((obj) =>
+    TE.chainW((docArr) =>
       pipe(
         TE.tryCatch(
-          () => SwaggerParser.dereference(obj),
+          async () => {
+            const resultDoc = []
+
+            for (const docObj of docArr) {
+              const validatedDoc = await SwaggerParser.dereference(docObj)
+              resultDoc.push(validatedDoc)
+            }
+
+            return resultDoc
+          },
           () => OPENAPI_DEREF_ERROR
         )
       )
     ),
-    TE.chainW(convertOpenApiDocToHopp)
+    TE.chainW(convertOpenApiDocsToHopp)
   )

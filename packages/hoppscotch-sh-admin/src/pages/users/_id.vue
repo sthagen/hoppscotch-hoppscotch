@@ -1,6 +1,7 @@
 <template>
   <div v-if="fetching" class="flex justify-center"><HoppSmartSpinner /></div>
-  <div v-else class="flex flex-col space-y-4">
+  <div v-else-if="error" class="text-lg">{{ t('users.load_info_error') }}</div>
+  <div v-else-if="user" class="flex flex-col space-y-4">
     <div class="flex gap-x-3">
       <button
         class="p-2 mb-2 rounded-3xl bg-divider"
@@ -11,7 +12,7 @@
 
       <div class="flex items-center space-x-3">
         <h1 class="text-lg text-accentContrast">
-          {{ user.displayName }}
+          {{ userName }}
         </h1>
         <span>/</span>
         <h2 class="text-lg text-accentContrast">
@@ -28,30 +29,31 @@
             @delete-user="deleteUser"
             @make-admin="makeUserAdmin"
             @remove-admin="makeAdminToUser"
+            @update-user-name="(name: string) => (userName = name)"
             class="py-8 px-4"
           />
         </HoppSmartTab>
         <HoppSmartTab :id="'requests'" :label="t('shared_requests.title')">
-          <UsersSharedRequests :email="user.email" class="py-8 px-4 mt-10" />
+          <UsersSharedRequests :email="user.email" />
         </HoppSmartTab>
       </HoppSmartTabs>
     </div>
 
     <HoppSmartConfirmModal
       :show="confirmDeletion"
-      :title="t('users.confirm_user_deletion')"
+      :title="t('state.confirm_user_deletion')"
       @hide-modal="confirmDeletion = false"
       @resolve="deleteUserMutation(deleteUserUID)"
     />
     <HoppSmartConfirmModal
       :show="confirmUserToAdmin"
-      :title="t('users.confirm_user_to_admin')"
+      :title="t('state.confirm_user_to_admin')"
       @hide-modal="confirmUserToAdmin = false"
       @resolve="makeUserAdminMutation(userToAdminUID)"
     />
     <HoppSmartConfirmModal
       :show="confirmAdminToUser"
-      :title="t('users.confirm_admin_to_user')"
+      :title="t('state.confirm_admin_to_user')"
       @hide-modal="confirmAdminToUser = false"
       @resolve="makeAdminToUserMutation(adminToUserUID)"
     />
@@ -59,21 +61,21 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
 import { useMutation } from '@urql/vue';
-import {
-  MakeUserAdminDocument,
-  UserInfoDocument,
-  RemoveUserByAdminDocument,
-  RemoveUserAsAdminDocument,
-} from '~/helpers/backend/graphql';
-import { useClientHandle } from '@urql/vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useToast } from '~/composables/toast';
 import { useI18n } from '~/composables/i18n';
+import { useToast } from '~/composables/toast';
+import { useClientHandler } from '~/composables/useClientHandler';
+import {
+  DemoteUsersByAdminDocument,
+  MakeUsersAdminDocument,
+  RemoveUsersByAdminDocument,
+  UserInfoDocument,
+} from '~/helpers/backend/graphql';
+import { handleUserDeletion } from '~/helpers/userManagement';
 
 const t = useI18n();
-
 const toast = useToast();
 
 // Tabs
@@ -91,61 +93,42 @@ const currentTabName = computed(() => {
   }
 });
 
-// Get User Info
-const user = ref();
-const { client } = useClientHandle();
-const fetching = ref(true);
 const route = useRoute();
 
-onMounted(async () => {
-  fetching.value = true;
-  const result = await client
-    .query(UserInfoDocument, { uid: route.params.id.toString() })
-    .toPromise();
-
-  if (result.error) {
-    toast.error(`${t('users.load_info_error')}`);
+const { fetching, error, data, fetchData } = useClientHandler(
+  UserInfoDocument,
+  {
+    uid: route.params.id.toString(),
   }
-  user.value = result.data?.infra.userInfo ?? {};
-  fetching.value = false;
+);
+
+onMounted(async () => {
+  await fetchData();
 });
 
-// User Deletion
-const router = useRouter();
-const userDeletion = useMutation(RemoveUserByAdminDocument);
-const confirmDeletion = ref(false);
-const deleteUserUID = ref<string | null>(null);
-
-const deleteUser = (id: string) => {
-  confirmDeletion.value = true;
-  deleteUserUID.value = id;
-};
-
-const deleteUserMutation = async (id: string | null) => {
-  if (!id) {
-    confirmDeletion.value = false;
-    toast.error(`${t('state.delete_user_failure')}`);
-    return;
-  }
-  const variables = { uid: id };
-  await userDeletion.executeMutation(variables).then((result) => {
-    if (result.error) {
-      toast.error(`${t('state.delete_user_failure')}`);
-    } else {
-      toast.success(`${t('state.delete_user_success')}`);
+const userName = computed({
+  get: () => data.value?.infra.userInfo.displayName,
+  set: (value) => {
+    if (value) {
+      data.value!.infra.userInfo.displayName = value;
     }
-  });
-  confirmDeletion.value = false;
-  deleteUserUID.value = null;
-  router.push('/users');
-};
+  },
+});
 
-// Make User Admin
-const userToAdmin = useMutation(MakeUserAdminDocument);
+const user = computed({
+  get: () => data.value?.infra.userInfo,
+  set: (value) => {
+    if (value) {
+      data.value!.infra.userInfo = value;
+    }
+  },
+});
+
 const confirmUserToAdmin = ref(false);
 const userToAdminUID = ref<string | null>(null);
+const usersToAdmin = useMutation(MakeUsersAdminDocument);
 
-const makeUserAdmin = (id: string) => {
+const makeUserAdmin = (id: string | null) => {
   confirmUserToAdmin.value = true;
   userToAdminUID.value = id;
 };
@@ -153,24 +136,26 @@ const makeUserAdmin = (id: string) => {
 const makeUserAdminMutation = async (id: string | null) => {
   if (!id) {
     confirmUserToAdmin.value = false;
-    toast.error(`${t('state.admin_failure')}`);
+    toast.error(t('state.admin_failure'));
     return;
   }
-  const variables = { uid: id };
-  await userToAdmin.executeMutation(variables).then((result) => {
-    if (result.error) {
-      toast.error(`${t('state.admin_failure')}`);
-    } else {
-      user.value.isAdmin = true;
-      toast.success(`${t('state.admin_success')}`);
-    }
-  });
+
+  const userUIDs = [id];
+  const variables = { userUIDs };
+  const result = await usersToAdmin.executeMutation(variables);
+
+  if (result.error) {
+    toast.error(t('state.admin_failure'));
+  } else {
+    toast.success(t('state.admin_success'));
+    user.value!.isAdmin = true;
+  }
   confirmUserToAdmin.value = false;
   userToAdminUID.value = null;
 };
 
 // Remove Admin Status from a current admin user
-const adminToUser = useMutation(RemoveUserAsAdminDocument);
+const adminToUser = useMutation(DemoteUsersByAdminDocument);
 const confirmAdminToUser = ref(false);
 const adminToUserUID = ref<string | null>(null);
 
@@ -182,19 +167,54 @@ const makeAdminToUser = (id: string) => {
 const makeAdminToUserMutation = async (id: string | null) => {
   if (!id) {
     confirmAdminToUser.value = false;
-    toast.error(`${t('state.remove_admin_failure')}`);
+    toast.error(t('state.remove_admin_failure'));
     return;
   }
-  const variables = { uid: id };
-  await adminToUser.executeMutation(variables).then((result) => {
-    if (result.error) {
-      toast.error(`${t('state.remove_admin_failure')}`);
-    } else {
-      user.value.isAdmin = false;
-      toast.error(`${t('state.remove_admin_success')}`);
-    }
-  });
+
+  const userUIDs = [id];
+  const variables = { userUIDs };
+  const result = await adminToUser.executeMutation(variables);
+  if (result.error) {
+    toast.error(t('state.remove_admin_failure'));
+  } else {
+    toast.success(t('state.remove_admin_success'));
+    user.value!.isAdmin = false;
+  }
   confirmAdminToUser.value = false;
   adminToUserUID.value = null;
+};
+
+// User Deletion
+const router = useRouter();
+const userDeletion = useMutation(RemoveUsersByAdminDocument);
+const confirmDeletion = ref(false);
+const deleteUserUID = ref<string | null>(null);
+
+const deleteUser = (id: string) => {
+  confirmDeletion.value = true;
+  deleteUserUID.value = id;
+};
+
+const deleteUserMutation = async (id: string | null) => {
+  if (!id) {
+    confirmDeletion.value = false;
+    toast.error(t('state.delete_user_failure'));
+    return;
+  }
+  const userUIDs = [id];
+  const variables = { userUIDs };
+  const result = await userDeletion.executeMutation(variables);
+
+  if (result.error) {
+    toast.error(t('state.delete_user_failure'));
+  } else {
+    const deletedUsers = result.data?.removeUsersByAdmin || [];
+
+    handleUserDeletion(deletedUsers);
+  }
+  confirmDeletion.value = false;
+  deleteUserUID.value = null;
+
+  !result.error && router.push('/users');
 };
 </script>

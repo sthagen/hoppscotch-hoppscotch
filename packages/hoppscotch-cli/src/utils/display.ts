@@ -1,4 +1,4 @@
-import { bold } from "chalk";
+import chalk from "chalk";
 import { groupEnd, group, log } from "console";
 import { handleError } from "../handlers/error";
 import { RequestConfig } from "../interfaces/request";
@@ -112,7 +112,7 @@ export const printTestsMetrics = (testsMetrics: TestMetrics) => {
 
 /**
  * Prints details of each reported error for a request with error code.
- * @param path Request's path in collection for which errors occured.
+ * @param path Request's path in collection for which errors occurred.
  * @param errorsReport List of errors reported.
  */
 export const printErrorsReport = (
@@ -120,7 +120,7 @@ export const printErrorsReport = (
   errorsReport: HoppCLIError[]
 ) => {
   if (errorsReport.length > 0) {
-    const REPORTED_ERRORS_TITLE = FAIL(`\n${bold(path)} reported errors:`);
+    const REPORTED_ERRORS_TITLE = FAIL(`\n${chalk.bold(path)} reported errors:`);
 
     group(REPORTED_ERRORS_TITLE);
     for (const errorReport of errorsReport) {
@@ -143,7 +143,7 @@ export const printFailedTestsReport = (
 
   // Only printing test-reports with failed test-cases.
   if (failedTestsReport.length > 0) {
-    const FAILED_TESTS_PATH = FAIL(`\n${bold(path)} failed tests:`);
+    const FAILED_TESTS_PATH = FAIL(`\n${chalk.bold(path)} failed tests:`);
     group(FAILED_TESTS_PATH);
 
     for (const failedTestReport of failedTestsReport) {

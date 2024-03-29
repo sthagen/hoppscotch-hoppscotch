@@ -1,6 +1,6 @@
 import { TypedDocumentNode, useClientHandle } from '@urql/vue';
 import { DocumentNode } from 'graphql';
-import { ref } from 'vue';
+import { Ref, ref } from 'vue';
 
 /** A composable function to handle grapqhl requests
  * using urql's useClientHandle
@@ -14,36 +14,45 @@ export function useClientHandler<
   ListItem
 >(
   query: string | TypedDocumentNode<Result, Vars> | DocumentNode,
-  getList: (result: Result) => ListItem[],
-  variables: Vars
+  variables: Vars,
+  getList?: (result: Result) => ListItem[]
 ) {
   const { client } = useClientHandle();
   const fetching = ref(true);
   const error = ref(false);
-  const list = ref<ListItem[]>([]);
+  const data = ref<Result>();
+  const dataAsList: Ref<ListItem[]> = ref([]);
 
-  const fetchList = async () => {
+  const fetchData = async () => {
     fetching.value = true;
-    try {
-      const result = await client
-        .query(query, {
-          ...variables,
-        })
-        .toPromise();
 
-      const resultList = getList(result.data!);
+    const result = await client
+      .query(query, {
+        ...variables,
+      })
+      .toPromise();
 
-      list.value.push(...resultList);
-    } catch (e) {
+    if (result.error) {
       error.value = true;
+      fetching.value = false;
+      return;
     }
+
+    if (getList) {
+      const resultList = getList(result.data!);
+      dataAsList.value.push(...resultList);
+    } else {
+      data.value = result.data;
+    }
+
     fetching.value = false;
   };
 
   return {
     fetching,
     error,
-    list,
-    fetchList,
+    data,
+    dataAsList,
+    fetchData,
   };
 }

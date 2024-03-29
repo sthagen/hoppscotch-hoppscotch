@@ -1,19 +1,27 @@
-import { pipe, flow } from "fp-ts/function"
-import * as TE from "fp-ts/TaskEither"
+import {
+  HoppCollection,
+  HoppRESTRequest,
+  getDefaultGQLRequest,
+  getDefaultRESTRequest,
+  translateToNewRESTCollection,
+} from "@hoppscotch/data"
+import * as A from "fp-ts/Array"
 import * as O from "fp-ts/Option"
 import * as RA from "fp-ts/ReadonlyArray"
-import { translateToNewRESTCollection, HoppCollection } from "@hoppscotch/data"
-import { isPlainObject as _isPlainObject } from "lodash-es"
+import * as TE from "fp-ts/TaskEither"
+import { flow, pipe } from "fp-ts/function"
 
-import { IMPORTER_INVALID_FILE_FORMAT } from "."
+import { HoppGQLRequest, translateToNewGQLCollection } from "@hoppscotch/data"
 import { safeParseJSON } from "~/helpers/functional/json"
-import { translateToNewGQLCollection } from "@hoppscotch/data"
+import { IMPORTER_INVALID_FILE_FORMAT } from "."
 
-export const hoppRESTImporter = (content: string) =>
+export const hoppRESTImporter = (content: string[]) =>
   pipe(
-    safeParseJSON(content),
+    content,
+    A.traverse(O.Applicative)((str) => safeParseJSON(str, true)),
     O.chain(
       flow(
+        A.flatten,
         makeCollectionsArray,
         RA.map(validateCollection),
         O.sequenceArray,
@@ -24,25 +32,29 @@ export const hoppRESTImporter = (content: string) =>
   )
 
 /**
- * checks if a value is a plain object
- */
-const isPlainObject = (value: any): value is object => _isPlainObject(value)
-
-/**
- * checks if a collection matches the schema for a hoppscotch collection.
- * here 2 is the latest version of the schema.
- */
-const isValidCollection = (collection: unknown): collection is HoppCollection =>
-  isPlainObject(collection) && "v" in collection && collection.v === 2
-
-/**
  * checks if a collection is a valid hoppscotch collection.
  * else translate it into one.
  */
 const validateCollection = (collection: unknown) => {
-  if (isValidCollection(collection)) {
-    return O.some(collection)
+  const collectionSchemaParsedResult = HoppCollection.safeParse(collection)
+
+  if (collectionSchemaParsedResult.type === "ok") {
+    const requests = collectionSchemaParsedResult.value.requests.map(
+      (request) => {
+        const requestSchemaParsedResult = HoppRESTRequest.safeParse(request)
+
+        return requestSchemaParsedResult.type === "ok"
+          ? requestSchemaParsedResult.value
+          : getDefaultRESTRequest()
+      }
+    )
+
+    return O.some({
+      ...collectionSchemaParsedResult.value,
+      requests,
+    })
   }
+
   return O.some(translateToNewRESTCollection(collection))
 }
 
@@ -72,8 +84,24 @@ export const hoppGQLImporter = (content: string) =>
  * @returns the collection if it is valid, else a translated version of the collection
  */
 export const validateGQLCollection = (collection: unknown) => {
-  if (isValidCollection(collection)) {
-    return O.some(collection)
+  const collectionSchemaParsedResult = HoppCollection.safeParse(collection)
+
+  if (collectionSchemaParsedResult.type === "ok") {
+    const requests = collectionSchemaParsedResult.value.requests.map(
+      (request) => {
+        const requestSchemaParsedResult = HoppGQLRequest.safeParse(request)
+
+        return requestSchemaParsedResult.type === "ok"
+          ? requestSchemaParsedResult.value
+          : getDefaultGQLRequest()
+      }
+    )
+
+    return O.some({
+      ...collectionSchemaParsedResult.value,
+      requests,
+    })
   }
+
   return O.some(translateToNewGQLCollection(collection))
 }
