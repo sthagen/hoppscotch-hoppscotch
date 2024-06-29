@@ -41,6 +41,8 @@ const user: AuthUser = {
   photoURL: 'https://example.com/photo.png',
   isAdmin: false,
   refreshToken: null,
+  lastLoggedOn: new Date(),
+  lastActiveOn: new Date(),
   createdOn: new Date(),
   currentGQLSession: null,
   currentRESTSession: null,

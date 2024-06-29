@@ -62,10 +62,10 @@
             </div>
           </template>
           <template #head>
-            <th class="px-6 py-2">{{ t('users.id') }}</th>
             <th class="px-6 py-2">{{ t('users.name') }}</th>
             <th class="px-6 py-2">{{ t('users.email') }}</th>
-            <th class="px-6 py-2">{{ t('users.date') }}</th>
+            <th class="px-6 py-2">{{ t('users.created_on') }}</th>
+            <th class="px-6 py-2">{{ t('users.last_active_on') }}</th>
             <!-- Empty header for Action Button -->
             <th class="w-20 px-6 py-2"></th>
           </template>
@@ -79,10 +79,6 @@
           </template>
 
           <template #body="{ row: user }">
-            <td class="py-2 px-7 max-w-[8rem] truncate">
-              {{ user.uid }}
-            </td>
-
             <td class="py-2 px-7">
               <div class="flex items-center space-x-2">
                 <span>
@@ -108,6 +104,8 @@
                 {{ getCreatedTime(user.createdOn) }}
               </div>
             </td>
+
+            <td class="py-2 px-7">{{ getLastActiveOn(user.lastActiveOn) }}</td>
 
             <td @click.stop class="flex justify-end w-20">
               <div class="mt-2 mr-5">
@@ -207,8 +205,10 @@
 
     <UsersInviteModal
       v-if="showInviteUserModal"
+      :smtp-enabled="smtpEnabled"
       @hide-modal="showInviteUserModal = false"
       @send-invite="sendInvite"
+      @copy-invite-link="copyInviteLink"
     />
     <HoppSmartConfirmModal
       :show="confirmUsersToAdmin"
@@ -245,6 +245,7 @@
 
 <script setup lang="ts">
 import { useMutation, useQuery } from '@urql/vue';
+import { useTimeAgo } from '@vueuse/core';
 import { format } from 'date-fns';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -254,6 +255,7 @@ import { usePagedQuery } from '~/composables/usePagedQuery';
 import {
   DemoteUsersByAdminDocument,
   InviteNewUserDocument,
+  IsSmtpEnabledDocument,
   MakeUsersAdminDocument,
   MetricsDocument,
   RemoveUsersByAdminDocument,
@@ -263,6 +265,7 @@ import {
 } from '~/helpers/backend/graphql';
 import { getCompiledErrorMessage } from '~/helpers/errors';
 import { handleUserDeletion } from '~/helpers/userManagement';
+import { copyToClipboard } from '~/helpers/utils/clipboard';
 import IconCheck from '~icons/lucide/check';
 import IconLeft from '~icons/lucide/chevron-left';
 import IconRight from '~icons/lucide/chevron-right';
@@ -277,15 +280,18 @@ import IconX from '~icons/lucide/x';
 const t = useI18n();
 const toast = useToast();
 
+// Time and Date Helpers
 const getCreatedDate = (date: string) => format(new Date(date), 'dd-MM-yyyy');
 const getCreatedTime = (date: string) => format(new Date(date), 'hh:mm a');
+const getLastActiveOn = (date: string | null) =>
+  date ? useTimeAgo(date).value : t('users.not_available');
 
 // Table Headings
 const headings = [
-  { key: 'uid', label: t('users.id') },
   { key: 'displayName', label: t('users.name') },
   { key: 'email', label: t('users.email') },
-  { key: 'createdOn', label: t('users.date') },
+  { key: 'createdOn', label: t('users.created_on') },
+  { key: 'lastActiveOn', label: t('users.last_active_on') },
   { key: '', label: '' },
 ];
 
@@ -444,16 +450,25 @@ const router = useRouter();
 const goToUserDetails = (user: UserInfoQuery['infra']['userInfo']) =>
   router.push('/users/' + user.uid);
 
+// Check if SMTP is enabled
+const { data: status } = useQuery({ query: IsSmtpEnabledDocument });
+const smtpEnabled = computed(() => status?.value?.isSMTPEnabled);
+
 // Send Invitation through Email
 const showInviteUserModal = ref(false);
 const sendInvitation = useMutation(InviteNewUserDocument);
 
 const sendInvite = async (email: string) => {
-  if (!email.trim()) {
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
     toast.error(t('state.invalid_email'));
-    return;
+    return false;
+  } else if (trimmedEmail === '') {
+    toast.error(t('users.valid_email'));
+    return false;
   }
-  const variables = { inviteeEmail: email.trim() };
+
+  const variables = { inviteeEmail: trimmedEmail };
   const result = await sendInvitation.executeMutation(variables);
   if (result.error) {
     const { message } = result.error;
@@ -462,10 +477,21 @@ const sendInvite = async (email: string) => {
     compiledErrorMessage
       ? toast.error(t(compiledErrorMessage))
       : toast.error(t('state.email_failure'));
+
+    return false;
   } else {
-    toast.success(t('state.email_success'));
+    if (smtpEnabled.value) toast.success(t('state.email_success'));
     showInviteUserModal.value = false;
+    return true;
   }
+};
+
+const copyInviteLink = async (email: string) => {
+  const result = await sendInvite(email);
+  if (!result) return;
+  const baseURL = import.meta.env.VITE_BASE_URL ?? '';
+  copyToClipboard(baseURL);
+  toast.success(t('state.link_copied_to_clipboard'));
 };
 
 // Make Multiple Users Admin

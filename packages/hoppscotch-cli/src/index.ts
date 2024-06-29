@@ -18,7 +18,7 @@ const CLI_BEFORE_ALL_TXT = `hopp: The ${accent(
 )}) ${chalk.black.bold.bgYellowBright(" ALPHA ")} \n`;
 
 const CLI_AFTER_ALL_TXT = `\nFor more help, head on to ${accent(
-  "https://docs.hoppscotch.io/documentation/clients/cli"
+  "https://docs.hoppscotch.io/documentation/clients/cli/overview"
 )}`;
 
 const program = new Command();
@@ -49,24 +49,32 @@ program.exitOverride().configureOutput({
 program
   .command("test")
   .argument(
-    "<file_path>",
-    "path to a hoppscotch collection.json file for CI testing"
+    "<file_path_or_id>",
+    "path to a hoppscotch collection.json file or collection ID from a workspace for CI testing"
   )
-  .option("-e, --env <file_path>", "path to an environment variables json file")
+  .option(
+    "-e, --env <file_path_or_id>",
+    "path to an environment variables json file or environment ID from a workspace"
+  )
   .option(
     "-d, --delay <delay_in_ms>",
     "delay in milliseconds(ms) between consecutive requests within a collection"
   )
+  .option(
+    "--token <access_token>",
+    "personal access token to access collections/environments from a workspace"
+  )
+  .option("--server <server_url>", "server URL for SH instance")
   .allowExcessArguments(false)
   .allowUnknownOption(false)
   .description("running hoppscotch collection.json file")
   .addHelpText(
     "after",
     `\nFor help, head on to ${accent(
-      "https://docs.hoppscotch.io/documentation/clients/cli#commands"
+      "https://docs.hoppscotch.io/documentation/clients/cli/overview#commands"
     )}`
   )
-  .action(async (path, options) => await test(path, options)());
+  .action(async (pathOrId, options) => await test(pathOrId, options)());
 
 export const cli = async (args: string[]) => {
   try {

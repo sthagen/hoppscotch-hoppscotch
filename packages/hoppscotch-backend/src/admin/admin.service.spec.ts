@@ -74,6 +74,8 @@ const dbAdminUsers: DbUser[] = [
     refreshToken: 'refreshToken',
     currentRESTSession: '',
     currentGQLSession: '',
+    lastLoggedOn: new Date(),
+    lastActiveOn: new Date(),
     createdOn: new Date(),
   },
   {
@@ -85,20 +87,11 @@ const dbAdminUsers: DbUser[] = [
     refreshToken: 'refreshToken',
     currentRESTSession: '',
     currentGQLSession: '',
+    lastLoggedOn: new Date(),
+    lastActiveOn: new Date(),
     createdOn: new Date(),
   },
 ];
-const dbNonAminUser: DbUser = {
-  uid: 'uid 3',
-  displayName: 'displayName',
-  email: 'email@email.com',
-  photoURL: 'photoURL',
-  isAdmin: false,
-  refreshToken: 'refreshToken',
-  currentRESTSession: '',
-  currentGQLSession: '',
-  createdOn: new Date(),
-};
 
 describe('AdminService', () => {
   describe('fetchInvitedUsers', () => {

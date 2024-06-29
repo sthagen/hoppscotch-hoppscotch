@@ -27,6 +27,8 @@ const user: AuthUser = {
   refreshToken: 'hbfvdkhjbvkdvdfjvbnkhjb',
   currentGQLSession: {},
   currentRESTSession: {},
+  lastLoggedOn: currentTime,
+  lastActiveOn: currentTime,
   createdOn: currentTime,
 };
 

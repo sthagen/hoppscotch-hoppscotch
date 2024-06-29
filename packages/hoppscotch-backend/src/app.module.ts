@@ -27,6 +27,8 @@ import { MailerModule } from './mailer/mailer.module';
 import { PosthogModule } from './posthog/posthog.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
+import { AccessTokenModule } from './access-token/access-token.module';
+import { UserLastActiveOnInterceptor } from './interceptors/user-last-active-on.interceptor';
 
 @Module({
   imports: [
@@ -102,8 +104,12 @@ import { HealthModule } from './health/health.module';
     PosthogModule,
     ScheduleModule.forRoot(),
     HealthModule,
+    AccessTokenModule,
   ],
-  providers: [GQLComplexityPlugin],
+  providers: [
+    GQLComplexityPlugin,
+    { provide: 'APP_INTERCEPTOR', useClass: UserLastActiveOnInterceptor },
+  ],
   controllers: [AppController],
 })
 export class AppModule {}
