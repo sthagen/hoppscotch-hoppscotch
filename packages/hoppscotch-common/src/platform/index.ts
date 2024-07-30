@@ -12,6 +12,7 @@ import { ServiceClassInstance } from "dioc"
 import { IOPlatformDef } from "./io"
 import { SpotlightPlatformDef } from "./spotlight"
 import { InfraPlatformDef } from "./infra"
+import { ExperimentsPlatformDef } from "./experiments"
 import { Ref } from "vue"
 
 export type PlatformDef = {
@@ -52,8 +53,15 @@ export type PlatformDef = {
      * Whether to show the A/B testing workspace switcher click login flow or not
      */
     workspaceSwitcherLogin?: Ref<boolean>
+
+    /**
+     * There's an active issue wrt syncing in personal workspace under SH while duplicating a collection
+     * This is a temporary flag to disable the same
+     */
+    duplicateCollectionDisabledInPersonalWorkspace?: boolean
   }
   infra?: InfraPlatformDef
+  experiments?: ExperimentsPlatformDef
 }
 
 export let platform: PlatformDef

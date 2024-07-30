@@ -68,6 +68,7 @@ const SettingsDefSchema = z.object({
   ),
 
   HAS_OPENED_SPOTLIGHT: z.optional(z.boolean()),
+  ENABLE_AI_EXPERIMENTS: z.optional(z.boolean()),
 })
 
 // Common properties shared across REST & GQL collections
@@ -276,7 +277,8 @@ const HoppGQLSaveContextSchema = z.nullable(
       .object({
         originLocation: z.literal("user-collection"),
         folderPath: z.string(),
-        requestIndex: z.number(),
+        // TODO: Investigate why this field is not populated at times
+        requestIndex: z.optional(z.number()),
       })
       .strict(),
     z

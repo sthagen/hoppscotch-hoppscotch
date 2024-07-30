@@ -54,6 +54,7 @@
         @add-request="addRequest($event)"
         @add-folder="addFolder($event)"
         @edit-folder="editFolder($event)"
+        @duplicate-collection="duplicateCollection($event)"
         @edit-request="editRequest($event)"
         @duplicate-request="duplicateRequest($event)"
         @select-collection="$emit('use-collection', collection)"
@@ -138,6 +139,7 @@
       :folder-path="editingFolderPath"
       :request="editingRequest"
       :request-index="editingRequestIndex"
+      :request-context="editingRequest"
       :editing-request-name="editingRequest ? editingRequest.name : ''"
       @hide-modal="displayModalEditRequest(false)"
     />
@@ -167,6 +169,7 @@ import {
   editGraphqlCollection,
   editGraphqlFolder,
   moveGraphqlRequest,
+  duplicateGraphQLCollection,
 } from "~/newstore/collections"
 import IconPlus from "~icons/lucide/plus"
 import IconHelpCircle from "~icons/lucide/help-circle"
@@ -379,6 +382,14 @@ const editCollection = (
   editingCollectionIndex.value = collectionIndex
   displayModalEdit(true)
 }
+
+const duplicateCollection = ({
+  path,
+  collectionSyncID,
+}: {
+  path: string
+  collectionSyncID?: string
+}) => duplicateGraphQLCollection(path, collectionSyncID)
 
 const onAddRequest = ({
   name,
