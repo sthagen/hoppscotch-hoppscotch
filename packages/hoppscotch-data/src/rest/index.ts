@@ -8,16 +8,14 @@ import { lodashIsEqualEq, mapThenEq, undefinedEq } from "../utils/eq"
 
 import V0_VERSION from "./v/0"
 import V1_VERSION from "./v/1"
-import V2_VERSION from "./v/2"
+import V2_VERSION, { HoppRESTRequestVariables } from "./v/2"
 import V3_VERSION from "./v/3"
 import V4_VERSION from "./v/4"
 import V5_VERSION from "./v/5"
 import V6_VERSION, { HoppRESTReqBody } from "./v/6"
+import V7_VERSION, { HoppRESTAuth } from "./v/7"
 
-import { HoppRESTHeaders, HoppRESTParams } from "./v/1"
-
-import { HoppRESTRequestVariables } from "./v/2"
-import { HoppRESTAuth } from "./v/5"
+import { HoppRESTParams, HoppRESTHeaders } from "./v/7"
 
 export * from "./content-types"
 
@@ -27,27 +25,26 @@ export {
   HoppRESTAuthBearer,
   HoppRESTAuthInherit,
   HoppRESTAuthNone,
-  HoppRESTHeaders,
   HoppRESTReqBodyFormData,
 } from "./v/1"
-
 export {
   ClientCredentialsGrantTypeParams,
   ImplicitOauthFlowParams,
   PasswordGrantTypeParams,
 } from "./v/3"
 
-export {
-  AuthCodeGrantTypeParams,
-  HoppRESTAuth,
-  HoppRESTAuthOAuth2,
-} from "./v/5"
-
+export { HoppRESTRequestVariables } from "./v/2"
 export { HoppRESTAuthAPIKey } from "./v/4"
 
-export { HoppRESTRequestVariables } from "./v/2"
-
+export { AuthCodeGrantTypeParams } from "./v/5"
 export { HoppRESTReqBody } from "./v/6"
+export {
+  HoppRESTAuth,
+  HoppRESTAuthAWSSignature,
+  HoppRESTAuthOAuth2,
+  HoppRESTHeaders,
+  HoppRESTParams,
+} from "./v/7"
 
 const versionedObject = z.object({
   // v is a stringified number
@@ -55,7 +52,7 @@ const versionedObject = z.object({
 })
 
 export const HoppRESTRequest = createVersionedEntity({
-  latestVersion: 6,
+  latestVersion: 7,
   versionMap: {
     0: V0_VERSION,
     1: V1_VERSION,
@@ -64,6 +61,7 @@ export const HoppRESTRequest = createVersionedEntity({
     4: V4_VERSION,
     5: V5_VERSION,
     6: V6_VERSION,
+    7: V7_VERSION,
   },
   getVersion(data) {
     // For V1 onwards we have the v string storing the number
@@ -105,7 +103,7 @@ const HoppRESTRequestEq = Eq.struct<HoppRESTRequest>({
   ),
 })
 
-export const RESTReqSchemaVersion = "6"
+export const RESTReqSchemaVersion = "7"
 
 export type HoppRESTParam = HoppRESTRequest["params"][number]
 export type HoppRESTHeader = HoppRESTRequest["headers"][number]
@@ -157,6 +155,7 @@ export function safelyExtractRESTRequest(
       const result = HoppRESTAuth.safeParse(x.auth)
 
       if (result.success) {
+        //  @ts-ignore
         req.auth = result.data
       }
     }

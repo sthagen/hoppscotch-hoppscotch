@@ -95,6 +95,11 @@ ENV PORT=8080
 ENV APP_PORT=${PORT}
 ENV DB_URL=${DATABASE_URL}
 
+# Open Containers Initiative (OCI) labels - useful for bots like Renovate
+LABEL org.opencontainers.image.source="https://github.com/hoppscotch/hoppscotch" \
+  org.opencontainers.image.url="https://docs.hoppscotch.io" \
+  org.opencontainers.image.licenses="MIT"
+
 # Run this separately to use the cache from backend
 RUN apk add caddy
 
@@ -119,8 +124,8 @@ COPY aio-subpath-access.Caddyfile /etc/caddy/aio-subpath-access.Caddyfile
 RUN npm install -g @import-meta-env/cli
 
 ENTRYPOINT [ "tini", "--" ]
-COPY --chmod=755 healthcheck.sh .
-HEALTHCHECK --interval=2s CMD /bin/sh ./healthcheck.sh
+COPY --chmod=755 healthcheck.sh /
+HEALTHCHECK --interval=2s CMD /bin/sh /healthcheck.sh
 
 WORKDIR /dist/backend
 

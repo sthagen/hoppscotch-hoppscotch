@@ -354,7 +354,9 @@ const saveEnvironment = async () => {
   isLoading.value = true
 
   if (!editingName.value) {
+    isLoading.value = false
     toast.error(`${t("environment.invalid_name")}`)
+
     return
   }
 
@@ -480,6 +482,8 @@ const getErrorMessage = (err: GQLError<string>) => {
   switch (err.error) {
     case "team_environment/not_found":
       return t("team_environment.not_found")
+    case "team_environment/short_name":
+      return t("environment.short_name")
     default:
       return t("error.something_went_wrong")
   }

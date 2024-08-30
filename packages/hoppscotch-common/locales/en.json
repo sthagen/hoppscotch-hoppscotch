@@ -101,7 +101,8 @@
     "updated_text": "Hoppscotch has been updated to v{version} 🎉",
     "whats_new": "What's new?",
     "see_whats_new": "See what’s new",
-    "wiki": "Wiki"
+    "wiki": "Wiki",
+    "default": "default: {value}"
   },
   "auth": {
     "account_exists": "Account exists with different credential - Login to link both accounts",
@@ -126,6 +127,7 @@
   },
   "authorization": {
     "generate_token": "Generate Token",
+    "refresh_token": "Refresh Token",
     "graphql_headers": "Authorization Headers are sent as part of the payload to connection_init",
     "include_in_url": "Include in URL",
     "inherited_from": "Inherited {auth} from parent collection {collection} ",
@@ -148,6 +150,9 @@
       "token_fetched_successfully": "Token fetched successfully",
       "token_fetch_failed": "Failed to fetch token",
       "validation_failed": "Validation Failed, please check the form fields",
+      "no_refresh_token_present": "No Refresh Token present. Please run the token generation flow again",
+      "refresh_token_request_failed": "Refresh token request failed",
+      "token_refreshed_successfully": "Token refreshed successfully",
       "label_authorization_endpoint": "Authorization Endpoint",
       "label_client_id": "Client ID",
       "label_client_secret": "Client Secret",
@@ -170,7 +175,16 @@
     "save_to_inherit": "Please save this request in any collection to inherit the authorization",
     "token": "Token",
     "type": "Authorization Type",
-    "username": "Username"
+    "username": "Username",
+    "aws_signature": {
+      "access_key": "Access Key",
+      "secret_key": "Secret Key",
+      "service_name": "Service Name",
+      "aws_region": "AWS Region",
+      "service_token": "Service Token",
+      "advance_config": "Advanced Configuration",
+      "advance_config_description": "Hoppscotch automatically assigns default values to certain fields if no explicit value is provided"
+    }
   },
   "collection": {
     "created": "Collection created",
@@ -242,6 +256,8 @@
     "header": "Header {count}",
     "message": "Message {count}",
     "parameter": "Parameter {count}",
+    "key": "Key {count}",
+    "description": "Description {count}",
     "protocol": "Protocol {count}",
     "value": "Value {count}",
     "variable": "Variable {count}"
@@ -307,6 +323,7 @@
     "select": "Select environment",
     "set": "Set environment",
     "set_as_environment": "Set as environment",
+    "short_name": "Environment needs to have minimum 3 characters",
     "team_environments": "Workspace Environments",
     "title": "Environments",
     "updated": "Environment updated",
@@ -441,6 +458,8 @@
     "from_postman_description": "Import from Postman collection",
     "from_url": "Import from URL",
     "gist_url": "Enter Gist URL",
+    "from_har": "Import from HAR",
+    "from_har_description": "Import from HAR file",
     "gql_collections_from_gist_description": "Import GraphQL Collections From Gist",
     "hoppscotch_environment": "Hoppscotch Environment",
     "hoppscotch_environment_description": "Import Hoppscotch Environment JSON file",
@@ -632,7 +651,9 @@
     "title": "Response",
     "video": "Video",
     "waiting_for_connection": "waiting for connection",
-    "xml": "XML"
+    "xml": "XML",
+    "generate_data_schema": "Generate Data Schema",
+    "data_schema": "Data Schema"
   },
   "settings": {
     "accent_color": "Accent color",

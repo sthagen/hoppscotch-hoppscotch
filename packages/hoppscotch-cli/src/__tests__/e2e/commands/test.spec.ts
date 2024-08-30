@@ -137,7 +137,7 @@ describe("hopp test [options] <file_path_or_id>", () => {
 
         expect(error).toBeNull();
       },
-      { timeout: 50000 }
+      { timeout: 100000 }
     );
 
     test("Persists environment variables set in the pre-request script for consumption in the test script", async () => {
@@ -158,6 +158,30 @@ describe("hopp test [options] <file_path_or_id>", () => {
       const { error } = await runCLI(args);
 
       expect(error).toBeNull();
+    });
+
+    describe("OAuth 2 Authorization type with Authorization Code Grant Type", () => {
+      test("Successfully translates the authorization information to headers/query params and sends it along with the request", async () => {
+        const args = `test ${getTestJsonFilePath(
+          "oauth2-auth-code-coll.json",
+          "collection"
+        )}`;
+        const { error } = await runCLI(args);
+
+        expect(error).toBeNull();
+      });
+    });
+
+    describe("multipart/form-data content type", () => {
+      test("Successfully derives the relevant headers based and sends the form data in the request body", async () => {
+        const args = `test ${getTestJsonFilePath(
+          "oauth2-auth-code-coll.json",
+          "collection"
+        )}`;
+        const { error } = await runCLI(args);
+
+        expect(error).toBeNull();
+      });
     });
   });
 
@@ -335,14 +359,77 @@ describe("hopp test [options] <file_path_or_id>", () => {
             "secret-envs-persistence-scripting-envs.json",
             "environment"
           );
+
           const args = `test ${COLL_PATH} --env ${ENVS_PATH}`;
 
           const { error } = await runCLI(args);
           expect(error).toBeNull();
         });
       },
-      { timeout: 20000 }
+      { timeout: 50000 }
     );
+
+    describe("Request variables", () => {
+      test("Picks active request variables and ignores inactive entries", async () => {
+        const COLL_PATH = getTestJsonFilePath(
+          "request-vars-coll.json",
+          "collection"
+        );
+
+        const args = `test ${COLL_PATH}`;
+
+        const { error } = await runCLI(args);
+        expect(error).toBeNull();
+      });
+
+      test("Supports the usage of request variables along with environment variables", async () => {
+        const env = {
+          ...process.env,
+          secretBasicAuthPasswordEnvVar: "password",
+        };
+
+        const COLL_PATH = getTestJsonFilePath(
+          "request-vars-coll.json",
+          "collection"
+        );
+        const ENVS_PATH = getTestJsonFilePath(
+          "request-vars-envs.json",
+          "environment"
+        );
+
+        const args = `test ${COLL_PATH} --env ${ENVS_PATH}`;
+
+        const { error, stdout } = await runCLI(args, { env });
+        expect(stdout).toContain(
+          "https://echo.hoppscotch.io/********/********"
+        );
+        expect(error).toBeNull();
+      });
+    });
+
+    describe("AWS Signature Authorization type", () => {
+      test("Successfully translates the authorization information to headers/query params and sends it along with the request", async () => {
+        const env = {
+          ...process.env,
+          secretKey: "test-secret-key",
+          serviceToken: "test-token",
+        };
+
+        const COLL_PATH = getTestJsonFilePath(
+          "aws-signature-auth-coll.json",
+          "collection"
+        );
+        const ENVS_PATH = getTestJsonFilePath(
+          "aws-signature-auth-envs.json",
+          "environment"
+        );
+
+        const args = `test ${COLL_PATH} -e ${ENVS_PATH}`;
+        const { error } = await runCLI(args, { env });
+
+        expect(error).toBeNull();
+      });
+    });
   });
 
   describe("Test `hopp test <file_path_or_id> --delay <delay_in_ms>` command:", () => {

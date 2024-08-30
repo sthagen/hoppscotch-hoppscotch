@@ -1,7 +1,7 @@
 {
   "name": "@hoppscotch/common",
   "private": true,
-  "version": "2024.7.2",
+  "version": "2024.8.0",
   "scripts": {
     "dev": "pnpm exec npm-run-all -p -l dev:*",
     "test": "vitest --run",
@@ -48,7 +48,8 @@
     "@vitejs/plugin-legacy": "4.1.1",
     "@vueuse/core": "10.7.0",
     "acorn-walk": "8.3.0",
-    "axios": "1.6.2",
+    "axios": "1.7.5",
+    "aws4fetch": "1.0.19",
     "buffer": "6.0.3",
     "cookie-es": "1.0.0",
     "dioc": "3.0.2",

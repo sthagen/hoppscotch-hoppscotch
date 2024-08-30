@@ -165,22 +165,24 @@
       </span>
     </div>
 
-    <div class="p-2">
+    <div class="p-2 gap-1 flex">
       <HoppButtonSecondary
         filled
         :label="`${t('authorization.generate_token')}`"
         @click="generateOAuthToken()"
+      />
+      <HoppButtonSecondary
+        v-if="runTokenRefresh"
+        filled
+        :label="`${t('authorization.refresh_token')}`"
+        @click="refreshOauthToken()"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  HoppGQLAuthOAuth2,
-  HoppRESTAuthOAuth2,
-  parseTemplateStringE,
-} from "@hoppscotch/data"
+import { HoppGQLAuthOAuth2, HoppRESTAuthOAuth2 } from "@hoppscotch/data"
 import { useService } from "dioc/vue"
 import * as E from "fp-ts/Either"
 import { Ref, computed, ref } from "vue"
@@ -188,10 +190,11 @@ import { z } from "zod"
 import { useI18n } from "~/composables/i18n"
 import { refWithCallbackOnChange } from "~/composables/ref"
 import { useToast } from "~/composables/toast"
-import { getCombinedEnvVariables } from "~/helpers/preRequest"
+import { replaceTemplateStringsInObjectValues } from "~/helpers/auth"
 import { AggregateEnvironment } from "~/newstore/environments"
 import authCode, {
   AuthCodeOauthFlowParams,
+  AuthCodeOauthRefreshParams,
   getDefaultAuthCodeOauthFlowParams,
 } from "~/services/oauth/flows/authCode"
 import clientCredentials, {
@@ -356,6 +359,48 @@ const supportedGrantTypes = [
         }
       )
 
+      const refreshToken = async () => {
+        const grantTypeInfo = auth.value.grantTypeInfo
+
+        if (!("refreshToken" in grantTypeInfo)) {
+          return E.left("NO_REFRESH_TOKEN_PRESENT" as const)
+        }
+
+        const refreshToken = grantTypeInfo.refreshToken
+
+        if (!refreshToken) {
+          return E.left("NO_REFRESH_TOKEN_PRESENT" as const)
+        }
+
+        const params: AuthCodeOauthRefreshParams = {
+          clientID: clientID.value,
+          clientSecret: clientSecret.value,
+          tokenEndpoint: tokenEndpoint.value,
+          refreshToken,
+        }
+
+        const unwrappedParams = replaceTemplateStringsInObjectValues(params)
+
+        const refreshTokenFunc = authCode.refreshToken
+
+        if (!refreshTokenFunc) {
+          return E.left("REFRESH_TOKEN_FUNCTION_NOT_DEFINED" as const)
+        }
+
+        const res = await refreshTokenFunc(unwrappedParams)
+
+        if (E.isLeft(res)) {
+          return E.left("OAUTH_REFRESH_TOKEN_FAILED" as const)
+        }
+
+        setAccessTokenInActiveContext(
+          res.right.access_token,
+          res.right.refresh_token
+        )
+
+        return E.right(undefined)
+      }
+
       const runAction = () => {
         const params: AuthCodeOauthFlowParams = {
           authEndpoint: authEndpoint.value,
@@ -456,6 +501,7 @@ const supportedGrantTypes = [
 
       return {
         runAction,
+        refreshToken,
         elements,
       }
     }),
@@ -854,11 +900,26 @@ const selectedGrantType = computed(() => {
   )
 })
 
-const setAccessTokenInActiveContext = (accessToken?: string) => {
+const setAccessTokenInActiveContext = (
+  accessToken?: string,
+  refreshToken?: string
+) => {
   if (props.isCollectionProperty && accessToken) {
     auth.value.grantTypeInfo = {
       ...auth.value.grantTypeInfo,
       token: accessToken,
+    }
+
+    // set the refresh token if provided
+    // we also make sure the grantTypes supporting refreshTokens are
+    if (
+      refreshToken &&
+      auth.value.grantTypeInfo.grantType === "AUTHORIZATION_CODE"
+    ) {
+      auth.value.grantTypeInfo = {
+        ...auth.value.grantTypeInfo,
+        refreshToken,
+      }
     }
 
     return
@@ -873,6 +934,16 @@ const setAccessTokenInActiveContext = (accessToken?: string) => {
   ) {
     tabService.currentActiveTab.value.document.request.auth.grantTypeInfo.token =
       accessToken
+  }
+
+  if (
+    refreshToken &&
+    tabService.currentActiveTab.value.document.request.auth.authType ===
+      "oauth-2"
+  ) {
+    // @ts-expect-error - todo: narrow the grantType to only supporting refresh tokens
+    tabService.currentActiveTab.value.document.request.auth.grantTypeInfo.refreshToken =
+      refreshToken
   }
 }
 
@@ -905,9 +976,52 @@ const runAction = computed(() => {
   return selectedGrantType.value?.formElements.value?.runAction
 })
 
+const runTokenRefresh = computed(() => {
+  // the only grant type that supports refresh tokens is the authCode grant type
+  if (selectedGrantType.value?.id === "authCode") {
+    return selectedGrantType.value?.formElements.value?.refreshToken
+  }
+
+  return null
+})
+
 const currentOAuthGrantTypeFormElements = computed(() => {
   return selectedGrantType.value?.formElements.value?.elements.value
 })
+
+const refreshOauthToken = async () => {
+  if (!runTokenRefresh.value) {
+    return
+  }
+
+  const res = await runTokenRefresh.value()
+
+  if (E.isLeft(res)) {
+    const errorMessages = {
+      NO_REFRESH_TOKEN_PRESENT: t(
+        "authorization.oauth.no_refresh_token_present"
+      ),
+      REFRESH_TOKEN_FUNCTION_NOT_DEFINED: t(
+        "authorization.oauth.refresh_token_request_failed"
+      ),
+      OAUTH_REFRESH_TOKEN_FAILED: t(
+        "authorization.oauth.refresh_token_request_failed"
+      ),
+    }
+
+    const isKnownError = res.left in errorMessages
+
+    if (!isKnownError) {
+      toast.error(t("authorization.oauth.refresh_token_failed"))
+      return
+    }
+
+    toast.error(errorMessages[res.left])
+    return
+  }
+
+  toast.success(t("authorization.oauth.token_refreshed_successfully"))
+}
 
 const generateOAuthToken = async () => {
   if (
@@ -937,55 +1051,6 @@ const generateOAuthToken = async () => {
     toast.error(errorMessages[res.left])
     return
   }
-}
-
-const replaceTemplateStringsInObjectValues = <
-  T extends Record<string, unknown>,
->(
-  obj: T
-) => {
-  const envs = getCombinedEnvVariables()
-
-  const requestVariables =
-    props.source === "REST"
-      ? restTabsService.currentActiveTab.value.document.request.requestVariables.map(
-          ({ key, value }) => ({
-            key,
-            value,
-            secret: false,
-          })
-        )
-      : []
-
-  // Ensure request variables are prioritized by removing any selected/global environment variables with the same key
-  const selectedEnvVars = envs.selected.filter(
-    ({ key }) =>
-      !requestVariables.some(({ key: reqVarKey }) => reqVarKey === key)
-  )
-  const globalEnvVars = envs.global.filter(
-    ({ key }) =>
-      !requestVariables.some(({ key: reqVarKey }) => reqVarKey === key)
-  )
-
-  const envVars = [...selectedEnvVars, ...globalEnvVars, ...requestVariables]
-
-  const newObj: Partial<T> = {}
-
-  for (const key in obj) {
-    const val = obj[key]
-
-    if (typeof val === "string") {
-      const parseResult = parseTemplateStringE(val, envVars)
-
-      newObj[key] = E.isRight(parseResult)
-        ? (parseResult.right as T[typeof key])
-        : (val as T[typeof key])
-    } else {
-      newObj[key] = val
-    }
-  }
-
-  return newObj as T
 }
 
 const grantTypeTippyActions = ref<HTMLElement | null>(null)

@@ -1,6 +1,6 @@
 {
   "name": "hoppscotch-backend",
-  "version": "2024.7.2",
+  "version": "2024.8.0",
   "description": "",
   "author": "",
   "private": true,
@@ -67,7 +67,7 @@
     "passport-jwt": "4.0.1",
     "passport-local": "1.0.0",
     "passport-microsoft": "1.0.0",
-    "posthog-node": "3.6.3",
+    "posthog-node": "4.2.0",
     "prisma": "5.8.1",
     "reflect-metadata": "0.1.13",
     "rimraf": "3.0.2",
