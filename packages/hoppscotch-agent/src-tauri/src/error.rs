@@ -40,6 +40,10 @@ pub enum AppError {
     RegistrationInsertError,
     #[error("Failed to save registrations to store")]
     RegistrationSaveError,
+    #[error("Store error: {0}")]
+    TauriPluginStore(#[from] tauri_plugin_store::Error),
+    #[error("Relay error: {0}")]
+    Relay(#[from] hoppscotch_relay::RelayError),
 }
 
 impl IntoResponse for AppError {
