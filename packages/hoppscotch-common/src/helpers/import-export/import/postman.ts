@@ -200,7 +200,7 @@ const getVariableValue = (defs: VariableDefinition[], key: string) =>
 const getHoppReqAuth = (
   hoppAuth: Item["request"]["auth"] | null
 ): HoppRESTAuth => {
-  if (!hoppAuth) return { authType: "inherit", authActive: false }
+  if (!hoppAuth) return { authType: "inherit", authActive: true }
 
   const auth = hoppAuth as unknown as PMRequestAuthDef
 
@@ -296,7 +296,7 @@ const getHoppReqBody = ({
             <FormDataKeyValue>{
               key: replacePMVarTemplating(param.key),
               value: replacePMVarTemplating(
-                param.type === "text" ? (param.value as string) : ""
+                param.type === "text" ? String(param.value) : ""
               ),
               active: !param.disabled,
               isFile: false, // TODO: Preserve isFile state ?
@@ -313,7 +313,7 @@ const getHoppReqBody = ({
           (param) =>
             `${replacePMVarTemplating(
               param.key ?? ""
-            )}: ${replacePMVarTemplating(param.value ?? "")}`
+            )}: ${replacePMVarTemplating(String(param.value ?? ""))}`
         ),
         stringArrayJoin("\n")
       ),
